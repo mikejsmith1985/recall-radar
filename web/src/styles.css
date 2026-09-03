@@ -1,0 +1,298 @@
+/* Recall Radar layout and the few visual states the tests and Cypress specs rely on. */
+:root {
+  --ink: #1b1f23;
+  --muted: #5c6670;
+  --line: #d9dee3;
+  --accent: #0b5fff;
+  --accent-soft: #e8f0ff;
+  --warn: #9a3412;
+  --warn-soft: #ffedd5;
+  --ok: #166534;
+  --ok-soft: #dcfce7;
+  --mark: #fff3a3;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: #f7f8fa;
+}
+
+body {
+  margin: 0;
+}
+
+.app-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab-bar button {
+  border: 1px solid var(--line);
+  background: white;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.tab-bar button[aria-selected="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.panel {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.vehicle-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.vehicle-picker button {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vehicle-picker button[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.vehicle-picker small {
+  display: block;
+  color: var(--muted);
+}
+
+.search-box {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.search-box input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.search-box button,
+.primary-button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.search-box button:disabled,
+.primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.mode-switch button {
+  border: 1px solid var(--line);
+  background: white;
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.mode-switch button[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.mode-switch button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mode-switch .explanation {
+  color: var(--warn);
+  font-size: 0.9rem;
+}
+
+.result-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.result-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: white;
+}
+
+.result-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.result-card .kind {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.result-card .meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.rank-explanation {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.rank-badge {
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.rank-badge.absent {
+  background: #eef0f2;
+  color: var(--muted);
+}
+
+.status-pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-pill.grounded {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.status-pill.not-grounded {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.dropped-count {
+  color: var(--warn);
+  font-size: 0.9rem;
+}
+
+.citation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.citation-list button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.citation-list blockquote {
+  margin: 0.25rem 0 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--accent);
+  color: var(--ink);
+}
+
+.record-body {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.record-body mark {
+  background: var(--mark);
+  padding: 0 0.1rem;
+}
+
+.eval-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.eval-table th,
+.eval-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.eval-table td.number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty-state,
+.error-state {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.error-state {
+  color: var(--warn);
+}
+
+.known-pattern-panel ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
