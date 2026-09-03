@@ -1,15 +1,22 @@
 # Local PostgreSQL with the pgvector extension. Integration tests do NOT use this;
 # they start their own throwaway container through Testcontainers (Article V).
+#
+# The password comes from the gitignored .env file (see .env.example). Compose reads
+# .env automatically; the :? form refuses to start with the variable unset.
 services:
   postgres:
     image: pgvector/pgvector:pg17
     container_name: recall-radar-postgres
     environment:
       POSTGRES_USER: recallradar
-      POSTGRES_PASSWORD: recallradar-local
+      # The :? suffix makes compose refuse to start when the variable is unset. The message is
+      # left empty on purpose: prose after the colon reads like a value to secret scanners.
+      POSTGRES_PASSWORD: ${RECALLRADAR_DB_PASSWORD:?}
       POSTGRES_DB: recallradar
     ports:
-      - "5433:5432"
+      # Host port is overridable because a stale Docker port proxy on one port is a common
+      # local failure; set RECALLRADAR_DB_PORT in .env to move it without editing this file.
+      - "${RECALLRADAR_DB_PORT:-5433}:5432"
     volumes:
       - recall-radar-pgdata:/var/lib/postgresql/data
     healthcheck:

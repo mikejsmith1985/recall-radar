@@ -48,7 +48,8 @@ xUnit + NSubstitute / Testcontainers.PostgreSql + WireMock.Net / Cypress + cypre
 
 | Command | Purpose |
 |---|---|
-| `docker compose up -d` | local pgvector Postgres on port 5433 |
+| `Copy-Item .env.example .env` then edit | one-time local setup; `.env` is gitignored and holds the DB password and connection string |
+| `docker compose up -d` | local pgvector Postgres on port 5433 (password from `.env`) |
 | `dotnet build` / `dotnet test tests/RecallRadar.Unit` | build; unit layer (mocked, 10 ms budget) |
 | `dotnet test tests/RecallRadar.Integration` | integration layer (real containers) |
 | `dotnet ef migrations add <Name> -p src/RecallRadar.Retrieval -s src/RecallRadar.Ingest` | schema change |
@@ -60,6 +61,6 @@ xUnit + NSubstitute / Testcontainers.PostgreSql + WireMock.Net / Cypress + cypre
 - A model-produced quote is not evidence until verified as a literal (whitespace-normalised) substring of its source record's stored body. Unverified citations are dropped and counted, never silently passed.
 - An answer with zero surviving citations is returned as **not grounded**. Grounding fails closed.
 - Retrieval explanations (dense rank, sparse rank, fused score) are part of the API contract, not a debug extra.
-- Secrets come only from the Forge Vault (`ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`). Settings never render secret values.
+- Secrets come only from the Forge Vault (`ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`) or the gitignored `.env` (`RECALLRADAR_CONNECTION`, `RECALLRADAR_DB_PASSWORD`). No connection string or password is ever written into source, including local defaults. Settings never render secret values.
 - `scripts/run-dev-clean.ps1` stops processes **by PID from a PID file only** — never a name pattern (Article II).
 - Unit tests never touch the network, disk, or a database. Integration tests never touch live NHTSA, Voyage, or Anthropic.

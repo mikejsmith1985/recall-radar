@@ -1,0 +1,51 @@
+{
+ "Count": 3,
+ "Message": "Results returned successfully",
+ "results": [
+  {
+   "Manufacturer": "Ford Motor Company",
+   "NHTSACampaignNumber": "19V435000",
+   "parkIt": false,
+   "parkOutSide": false,
+   "overTheAirUpdate": false,
+   "ReportReceivedDate": "10/06/2019",
+   "Component": "SUSPENSION:REAR",
+   "Summary": "Ford Motor Company (Ford) is recalling certain 2011-2017 Explorer vehicles.  The rear suspension toe links may fracture due to stress on the rear suspension.",
+   "Consequence": "A fractured rear toe link will cause a sudden change in vehicle handling and increase the risk of a crash.",
+   "Remedy": "Ford will notify owners, and dealers will replace the rear suspension toe links, and inspect both rear toe link ball joints, replacing the rear wheel knuckle(s), if necessary, free of charge.  The recall began June 26, 2019.  Owners may contact Ford customer service at 1-866-436-7332.  Ford's number for this recall is 19S17.",
+   "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+   "ModelYear": "2013",
+   "Make": "FORD",
+   "Model": "EXPLORER"
+  },
+  {
+   "Manufacturer": "Ford Motor Company",
+   "NHTSACampaignNumber": "17E048000",
+   "ReportReceivedDate": "28/08/2017",
+   "Component": "WHEELS:HUB",
+   "Summary": "Ford Motor Company (Ford) is recalling certain Wheel Hub Bearing assemblies, part number HB5Z-1104-C, incorrectly listed as being for installation on the rear axles of 2011-2017 Ford Explorer 4X2 vehicles.  These bearings assemblies were manufactured without a self retention feature, possibly resulting in the separation of the wheel or wheel end.",
+   "Consequence": "A loss of the wheel or wheel end can increase the risk of a crash.",
+   "Remedy": "Ford will notify the distributors of the hubs specifying that they are to only be used on drive axles.  It is believed that none of the hubs were purchased from Ford dealers for the incorrect application.  Owners may contact Ford customer service at 1-866-436-7332.",
+   "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+   "ModelYear": "2013",
+   "Make": "FORD",
+   "Model": "EXPLORER"
+  },
+  {
+   "Manufacturer": "Ford Motor Company",
+   "NHTSACampaignNumber": "15V171000",
+   "parkIt": false,
+   "parkOutSide": false,
+   "overTheAirUpdate": false,
+   "ReportReceivedDate": "24/03/2015",
+   "Component": "STRUCTURE:BODY:DOOR",
+   "Summary": "Ford Motor Company (Ford) is recalling certain model year 2011-2013 Explorer vehicles.  In the affected vehicles, the interior door handle return spring may unseat, resulting in interior door handle that does not return to the fully stowed position after actuation.",
+   "Consequence": "If the interior door handle return spring is unseated, the door may unlatch in the event of a side impact crash, increasing the risk of personal injury.",
+   "Remedy": "Ford will notify owners, and dealers will inspect all four of the interior door handles and either repair or replace them, free of charge.  The recall began on July 23, 2015.  Owners may contact Ford customer service at 1-866-436-7332.  Ford's number for this recall is 15S11.",
+   "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+   "ModelYear": "2013",
+   "Make": "FORD",
+   "Model": "EXPLORER"
+  }
+ ]
+}

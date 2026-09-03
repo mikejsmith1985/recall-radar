@@ -8,7 +8,7 @@ Validation guide. Every step names the evidence that proves it worked (Article X
 - Docker Desktop running (`docker ps`)
 - Node 24 (`node --version`) for the web client and Cypress
 - Forge Terminal with the vault unlocked. Secrets are injected, never pasted:
-  `ANTHROPIC_API_KEY` ← vault entry `smithbros-claude-api-key`; `VOYAGE_API_KEY` ← (pending).
+  `ANTHROPIC_API_KEY` ← the Anthropic key entry in the Forge Vault; `VOYAGE_API_KEY` ← (pending).
 
 ## 1. Database
 

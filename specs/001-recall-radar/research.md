@@ -123,7 +123,7 @@ worse than none.
 **Decision**: `scripts/run-dev-clean.ps1` ported verbatim in structure; PID file `.recall-radar.pid`;
 `Start-App` runs `dotnet run --project src/RecallRadar.Api` with `-PassThru` and records the PID;
 `Stop-RunningApp` validates `^\d+$` and calls `Stop-Process -Id`. Secrets: `ANTHROPIC_API_KEY` injected
-from vault entry `smithbros-claude-api-key`; `VOYAGE_API_KEY` to be added; `AppSettings.ToString()`
+from the Anthropic key entry in the Forge Vault; `VOYAGE_API_KEY` to be added; `AppSettings.ToString()`
 never renders them; an integration test asserts no key value appears in captured logs.
 
 ## R8 — Evaluation ground truth
