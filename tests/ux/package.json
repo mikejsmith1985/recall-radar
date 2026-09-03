@@ -1,0 +1,14 @@
+{
+  "name": "recall-radar-ux",
+  "private": true,
+  "description": "Cypress UX suite driven with real pointer and keyboard events against a seeded Recall Radar",
+  "scripts": {
+    "test": "cypress run",
+    "open": "cypress open"
+  },
+  "devDependencies": {
+    "cypress": "^13.17.0",
+    "cypress-real-events": "^1.14.0",
+    "typescript": "^5.7.2"
+  }
+}
