@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- An `embed` command back-fills embeddings for chunks that have none, in batches, saving each batch
+  so a partial run resumes. Without a Voyage key it exits with `error: VOYAGE_API_KEY not set`
+  rather than pretending to work.
+- Hybrid retrieval over a vehicle's records, in three modes. Sparse matches keywords through the
+  database's own full-text index, dense matches meaning through pgvector, and hybrid fuses the two
+  with reciprocal rank fusion. Every hit carries the rank it held under each method and its fused
+  score, so a reader can see whether a record surfaced by wording, by meaning, or by both. Sparse
+  needs no embedding key and works on the records already loaded.
+- `GET /api/vehicles` lists each registered vehicle with how many complaints, recalls and
+  investigations it holds, and `GET /api/search` runs a search with optional component and filing
+  date filters. An unknown vehicle answers 404, a rejected query 400, and a mode needing embeddings
+  answers 409 naming keyword search as the alternative rather than failing.
+- `GET /health` reports capability rather than liveness: whether the database is reachable and
+  whether the embedding and answering keys are configured. A missing key is a normal operating
+  state, and the client uses this to disable the modes it cannot offer.
 - Ingestion of one vehicle's NHTSA records with `ingest --vehicle "<display name>"`: complaints
   and recalls from the public APIs, defect investigations from the `FLAT_INV.zip` flat file,
   every record stored verbatim, cut into retrievable passages, and linked to the recall
@@ -42,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   password, but a password in a repository is a habit worth not having.
 
 ### Fixed
+- A search that needs embeddings no longer returns 500 when the embedding provider is unreachable
+  or erroring. The provider being down is a temporary, reportable state, distinct from having no
+  key configured: the first answers 503 and the second 409, and both name keyword search as the
+  alternative. Neither ever quotes the provider's response body, which can echo the credential.
 - The unit-test timing gate no longer fails on a cold process. A 10 ms wall-clock threshold cannot
   tell first-use compilation from input and output, so one or two arbitrary tests failed on every
   cold run and passed on every warm one. Article V's 10 ms stays the recorded standard; the
