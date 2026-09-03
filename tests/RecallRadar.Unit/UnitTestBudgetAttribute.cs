@@ -6,6 +6,9 @@ using System.Runtime.CompilerServices;
 using Xunit.Sdk;
 
 [assembly: RecallRadar.Unit.UnitTestBudget]
+// Classes run one at a time: the budget measures wall-clock time, and twenty classes starting at
+// once would charge each first test for the others' start-up contention rather than its own work.
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace RecallRadar.Unit;
 
@@ -25,7 +28,7 @@ public sealed class UnitTestBudgetAttribute : BeforeAfterTestAttribute
     public const int BudgetMilliseconds = 10;
 
     /// <summary>Assemblies whose code is compiled ahead of the first timed test. Framework assemblies are left to load lazily.</summary>
-    private static readonly string[] WarmUpAssemblyPrefixes = ["RecallRadar", "System.CommandLine", "Pgvector"];
+    private static readonly string[] WarmUpAssemblyPrefixes = ["RecallRadar", "System.CommandLine", "Pgvector", "System.Text.Json"];
 
     private static readonly ConcurrentDictionary<MethodInfo, Stopwatch> Timers = new();
     private static readonly Lazy<bool> WarmUp = new(WarmUpRuntime, LazyThreadSafetyMode.ExecutionAndPublication);

@@ -1,0 +1,138 @@
+{
+ "count": 6,
+ "message": "Results returned successfully",
+ "results": [
+  {
+   "odiNumber": 11639231,
+   "manufacturer": "Ford Motor Company",
+   "crash": false,
+   "fire": false,
+   "numberOfInjuries": 0,
+   "numberOfDeaths": 0,
+   "dateOfIncident": "12/20/2024",
+   "dateComplaintFiled": "01/28/2025",
+   "vin": "1FM5K8GT4DG",
+   "components": "ENGINE",
+   "summary": "Recently, I experienced a catastrophic water pump failure that has resulted in extensive damage to my vehicle\u2019s, a 2013 Ford Explorer equipped with a cyclone engine, engine and turbocharger   Details of the Incident According to Ford of Englewood, NJ, the water pump failure in my Explorer caused coolant to seep into the oil pan, mixing with other fluids. This has resulted in the need for a complete replacement of both the engine and turbocharger, at an estimated cost of $15000. See diagnostics attached. I recently discovered there have been several class action lawsuits launched regarding this exact problem.   The vehicle is currently with the service department at Ford of Englewood. As mentioned above it has been diagnosed as premature water pump failure resulting in catastrophic engine damage.  Luckily this issue presented its self at engine turnover, however had the failure occurred at speed on the highway the results could have been extremely dangerous indeed, not just to myself but to other unsuspecting road users.  MOST concerning is that NO warning lamps or warning gauges were activated until well after the exhausts started spewing thick white smoke, and then only the check light flicked on but went off again after a few minutes. At which time i IMMEDIATELY contacted Ford of Englewood to book a diagnostic. As I non mechanically minded consumer I could never of guessed the extent of the damage.",
+   "products": [
+    {
+     "type": "Vehicle",
+     "productYear": "2013",
+     "productMake": "FORD",
+     "productModel": "EXPLORER",
+     "manufacturer": "Ford Motor Company"
+    }
+   ]
+  },
+  {
+   "odiNumber": 11578633,
+   "manufacturer": "Ford Motor Company",
+   "crash": false,
+   "fire": false,
+   "numberOfInjuries": 0,
+   "numberOfDeaths": 0,
+   "dateOfIncident": "03/21/2024",
+   "dateComplaintFiled": "03/21/2024",
+   "vin": " 1FM5K8D80D",
+   "components": "ENGINE",
+   "summary": "The contact owns a 2013 Ford Explorer.  The contact stated when his wife was driving the vehicle she became sleepy from the exhaust fumes.  The contact stated his wife would feel fine when she was not in the vehicle.  The were no warning lights illuminated.  The vehicle was taken to a local mechanic who informed the contact's wife to drive with the windows down and not to drive passengers.  The vehicle was not repaired, but the mechanic discussed replacing both exhaust manifolds.   The manufacturer was made aware of the failure and referred the contact to NHTSA Hotline for assistance.  The approximate failure mileage was 119,000.",
+   "products": [
+    {
+     "type": "Vehicle",
+     "productYear": "2013",
+     "productMake": "FORD",
+     "productModel": "EXPLORER",
+     "manufacturer": "Ford Motor Company"
+    }
+   ]
+  },
+  {
+   "odiNumber": 11753414,
+   "manufacturer": "Ford Motor Company",
+   "crash": false,
+   "fire": false,
+   "numberOfInjuries": 0,
+   "numberOfDeaths": 0,
+   "dateOfIncident": "05/16/2026",
+   "dateComplaintFiled": "07/29/2026",
+   "vin": "1FM5K8D85DG",
+   "components": "STEERING",
+   "summary": "I was driving and the steering locked. I could not move steering wheel either way.  Towed to ford repair\u2026 they replaced steering rack.  Four times it was replaced..4 times it locked.",
+   "products": [
+    {
+     "type": "Vehicle",
+     "productYear": "2013",
+     "productMake": "FORD",
+     "productModel": "EXPLORER",
+     "manufacturer": "Ford Motor Company"
+    }
+   ]
+  },
+  {
+   "odiNumber": 11751091,
+   "manufacturer": "Ford Motor Company",
+   "crash": false,
+   "fire": false,
+   "numberOfInjuries": 0,
+   "numberOfDeaths": 0,
+   "dateOfIncident": "07/16/2026",
+   "dateComplaintFiled": "07/17/2026",
+   "vin": "1FM5K7F88DG",
+   "components": "STEERING",
+   "summary": "Same issue as in recall 14S06. However, I do not see this recall under my VIN, nor has this vehicle been repaired in the past for this issue. I was hoping that possibly the recall doesn't show up because it was established in 2014. I just want to get it corrected, as the electric power steering is disabled.",
+   "products": [
+    {
+     "type": "Vehicle",
+     "productYear": "2013",
+     "productMake": "FORD",
+     "productModel": "EXPLORER",
+     "manufacturer": "Ford Motor Company"
+    }
+   ]
+  },
+  {
+   "odiNumber": 11760888,
+   "manufacturer": "Ford Motor Company",
+   "crash": false,
+   "fire": false,
+   "numberOfInjuries": 0,
+   "numberOfDeaths": 0,
+   "dateOfIncident": "12/31/2025",
+   "dateComplaintFiled": "08/31/2026",
+   "vin": "",
+   "components": "STRUCTURE",
+   "summary": "The contact owns a 2013 Ford Explorer. The contact received a recall notification for NHTSA Campaign Number: 24V031000 (Structure); however, the parts to complete the recall repair were not yet available. The contact stated that both windshield exterior A-pillar trims had dry-rotted. The vehicle was taken to a dealer, where it was inspected. The dealer confirmed that parts were unavailable and placed the vehicle on a waiting list. The vehicle was not repaired. The contact stated that the manufacturer had exceeded a reasonable amount of time for the recall repair. The manufacturer was not notified of the failure. The failure mileage was approximately 130,000. The VIN was unavailable.",
+   "products": [
+    {
+     "type": "Vehicle",
+     "productYear": "2013",
+     "productMake": "FORD",
+     "productModel": "EXPLORER",
+     "manufacturer": "Ford Motor Company"
+    }
+   ]
+  },
+  {
+   "odiNumber": 11639231,
+   "manufacturer": "Ford Motor Company",
+   "crash": false,
+   "fire": false,
+   "numberOfInjuries": 0,
+   "numberOfDeaths": 0,
+   "dateOfIncident": "12/20/2024",
+   "dateComplaintFiled": "01/28/2025",
+   "vin": "1FM5K8GT4DG",
+   "components": "ENGINE",
+   "summary": "Recently, I experienced a catastrophic water pump failure that has resulted in extensive damage to my vehicle\u2019s, a 2013 Ford Explorer equipped with a cyclone engine, engine and turbocharger   Details of the Incident According to Ford of Englewood, NJ, the water pump failure in my Explorer caused coolant to seep into the oil pan, mixing with other fluids. This has resulted in the need for a complete replacement of both the engine and turbocharger, at an estimated cost of $15000. See diagnostics attached. I recently discovered there have been several class action lawsuits launched regarding this exact problem.   The vehicle is currently with the service department at Ford of Englewood. As mentioned above it has been diagnosed as premature water pump failure resulting in catastrophic engine damage.  Luckily this issue presented its self at engine turnover, however had the failure occurred at speed on the highway the results could have been extremely dangerous indeed, not just to myself but to other unsuspecting road users.  MOST concerning is that NO warning lamps or warning gauges were activated until well after the exhausts started spewing thick white smoke, and then only the check light flicked on but went off again after a few minutes. At which time i IMMEDIATELY contacted Ford of Englewood to book a diagnostic. As I non mechanically minded consumer I could never of guessed the extent of the damage.",
+   "products": [
+    {
+     "type": "Vehicle",
+     "productYear": "2013",
+     "productMake": "FORD",
+     "productModel": "EXPLORER",
+     "manufacturer": "Ford Motor Company"
+    }
+   ]
+  }
+ ]
+}

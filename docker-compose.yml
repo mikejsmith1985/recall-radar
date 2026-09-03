@@ -12,7 +12,9 @@ services:
       POSTGRES_PASSWORD: ${RECALLRADAR_DB_PASSWORD:?Set RECALLRADAR_DB_PASSWORD in .env (copy .env.example)}
       POSTGRES_DB: recallradar
     ports:
-      - "5433:5432"
+      # Host port is overridable because a stale Docker port proxy on one port is a common
+      # local failure; set RECALLRADAR_DB_PORT in .env to move it without editing this file.
+      - "${RECALLRADAR_DB_PORT:-5433}:5432"
     volumes:
       - recall-radar-pgdata:/var/lib/postgresql/data
     healthcheck:
