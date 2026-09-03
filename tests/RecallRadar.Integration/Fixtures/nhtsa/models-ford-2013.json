@@ -1,0 +1,26 @@
+{
+ "count": 63,
+ "message": "Results returned successfully",
+ "results": [
+  {
+   "modelYear": "2013",
+   "make": "FORD",
+   "model": "EXPLORER"
+  },
+  {
+   "modelYear": "2013",
+   "make": "FORD",
+   "model": "EXPLORER"
+  },
+  {
+   "modelYear": "2013",
+   "make": "FORD",
+   "model": "TAURUS"
+  },
+  {
+   "modelYear": "2013",
+   "make": "FORD",
+   "model": "TAURUS"
+  }
+ ]
+}

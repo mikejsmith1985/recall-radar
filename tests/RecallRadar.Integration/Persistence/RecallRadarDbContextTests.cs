@@ -47,7 +47,10 @@ public sealed class RecallRadarDbContextTests(PostgresFixture postgres)
         var nearest = await readContext.DocumentChunks
             .OrderBy(entity => entity.Embedding!.CosineDistance(queryVector))
             .FirstAsync();
+        // Scoped to this document: the container is shared by the whole collection, and other tests
+        // load real complaints that also mention exhaust odor.
         var fullTextHit = await readContext.DocumentChunks
+            .Where(entity => entity.DocumentId == document.Id)
             .Where(entity => entity.SearchText!.Matches(EF.Functions.WebSearchToTsQuery("english", "exhaust odor")))
             .CountAsync();
 
