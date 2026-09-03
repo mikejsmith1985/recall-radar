@@ -1,0 +1,25 @@
+# .NET build output
+bin/
+obj/
+*.user
+.vs/
+
+# Node / Vite / Cypress
+node_modules/
+web/dist/
+tests/ux/videos/
+tests/ux/screenshots/
+
+# Runtime and local state
+*.pid
+*.log
+.env
+.env.*
+!.env.example
+eval/results.local.json
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
