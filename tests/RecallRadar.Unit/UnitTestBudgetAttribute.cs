@@ -3,6 +3,11 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RecallRadar.Retrieval.Persistence;
 using Xunit.Sdk;
 
 [assembly: RecallRadar.Unit.UnitTestBudget]
@@ -132,6 +137,7 @@ public sealed class UnitTestBudgetAttribute : BeforeAfterTestAttribute
         }
 
         WarmUpGenericPaths();
+        WarmUpFrameworkPaths();
         return true;
     }
 
@@ -224,4 +230,71 @@ public sealed class UnitTestBudgetAttribute : BeforeAfterTestAttribute
     }
 
     private static object ThrowForWarmUp() => throw new InvalidOperationException("warm-up");
+
+    /// <summary>
+    /// Runs the framework machinery the tests build on, once, before anything is timed.
+    /// </summary>
+    /// <remarks>
+    /// Loading an assembly is not the same as compiling the code inside it. Building a service
+    /// provider, sending a request through an HTTP client and configuring a database context each
+    /// compile a large amount of generic and reflection-driven code on first use, and whichever
+    /// test reached one of them first was measured at 170 to 320 milliseconds for work it did not
+    /// do. None of this touches the network or the disk: the handler is a stub and the context is
+    /// only configured, never connected.
+    /// </remarks>
+    private static void WarmUpFrameworkPaths()
+    {
+        try
+        {
+            WarmUpServiceProvider();
+            WarmUpHttpClient();
+            WarmUpDatabaseContext();
+        }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            // The warm-up is an optimisation, never a gate. If a path changes shape and throws
+            // here, the tests still run; the first one to reach that path simply pays for it.
+        }
+    }
+
+    private static void WarmUpServiceProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(TimeProvider.System);
+        services.AddHttpClient(nameof(UnitTestBudgetAttribute)).AddStandardResilienceHandler();
+        using var provider = services.BuildServiceProvider();
+        _ = provider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(UnitTestBudgetAttribute));
+    }
+
+    private static void WarmUpHttpClient()
+    {
+        using var handler = new WarmUpHandler();
+        using var client = new HttpClient(handler) { BaseAddress = new Uri("http://warm-up.invalid/") };
+        using var content = new StringContent("{\"warm\":true}", Encoding.UTF8, "application/json");
+        using var response = client.PostAsync("path", content).GetAwaiter().GetResult();
+        using var parsed = JsonDocument.Parse(response.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+        _ = parsed.RootElement.EnumerateObject().Count();
+    }
+
+    private static void WarmUpDatabaseContext()
+    {
+        // Constructed but never opened. Building the options and standing up the context's internal
+        // service provider is what costs about two hundred milliseconds; connecting would be the
+        // input and output this budget exists to catch, so nothing here queries.
+        var options = RecallRadarDbContextFactory.Configure(
+            new DbContextOptionsBuilder<RecallRadarDbContext>(),
+            "Host=127.0.0.1;Port=1;Database=warmup;Username=none;Password=none;Timeout=1").Options;
+        using var context = new RecallRadarDbContext(options);
+        _ = context.Model;
+    }
+
+    /// <summary>Answers every request immediately, so the warm-up never leaves the process.</summary>
+    private sealed class WarmUpHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"warm\":true}", Encoding.UTF8, "application/json"),
+            });
+    }
 }

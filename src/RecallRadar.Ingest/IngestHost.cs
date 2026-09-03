@@ -6,8 +6,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using RecallRadar.Ingest.Commands;
 using RecallRadar.Ingest.Config;
 using RecallRadar.Ingest.Nhtsa;
+using RecallRadar.Retrieval.Embeddings;
 using RecallRadar.Retrieval.Persistence;
 
 namespace RecallRadar.Ingest;
@@ -53,6 +55,11 @@ public static class IngestHost
         builder.Services.AddDbContext<RecallRadarDbContext>((provider, options) =>
             RecallRadarDbContextFactory.Configure(options, ResolveConnection(provider.GetRequiredService<IConfiguration>())));
         builder.Services.AddScoped<IngestService>();
+
+        // Voyage when a key is configured, otherwise a generator that refuses. The embed verb asks
+        // which one it got before touching the database, so a missing key fails with one clear line.
+        builder.Services.AddEmbeddingGenerator(builder.Configuration);
+        builder.Services.AddScoped<EmbedCommand>();
         return builder;
     }
 
@@ -88,6 +95,38 @@ public static class IngestHost
             await scope.ServiceProvider.GetRequiredService<RecallRadarDbContext>().Database.MigrateAsync(cancellationToken);
             var report = await scope.ServiceProvider.GetRequiredService<IngestService>().IngestAsync(registration, cancellationToken);
             foreach (var line in report.FormatLines(stopwatch.Elapsed))
+            {
+                await stdout.WriteLineAsync(line);
+            }
+
+            return SuccessExitCode;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            await stderr.WriteLineAsync($"{ErrorPrefix} {exception.Message}");
+            return FailureExitCode;
+        }
+    }
+
+    /// <summary>
+    /// Back-fills embeddings inside the host, printing the contract output. Exit code 0 or 1.
+    /// </summary>
+    /// <remarks>
+    /// A missing key surfaces as <c>error: VOYAGE_API_KEY not set</c> through the same catch that
+    /// handles every other failure, because to an operator it is one more reason the verb could not
+    /// do its job, not a special case needing its own path.
+    /// </remarks>
+    public static async Task<int> RunEmbedAsync(
+        IHost host, string? vehicleDisplayName, TextWriter stdout, TextWriter stderr, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        try
+        {
+            await using var scope = host.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<RecallRadarDbContext>().Database.MigrateAsync(cancellationToken);
+            var report = await scope.ServiceProvider.GetRequiredService<EmbedCommand>()
+                .EmbedAsync(vehicleDisplayName, cancellationToken);
+            foreach (var line in report.FormatLines())
             {
                 await stdout.WriteLineAsync(line);
             }
