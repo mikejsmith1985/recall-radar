@@ -60,7 +60,7 @@ design holds for tens of vehicles without change; single local user
 | VI Documentation | `CHANGELOG.md` per PR; no status documents outside `specs/` | PASS |
 | VII Framework-First | Every custom component carries a drift justification (research R2, R4, R5) | PASS |
 | VIII Release | Local pipeline only; no GitHub Actions release | PASS — release is out of scope for this feature |
-| IX Vault Zero-Knowledge | `ANTHROPIC_API_KEY` from `smithbros-claude-api-key`; `VOYAGE_API_KEY` pending; settings type refuses to render secrets; no-leak test | PASS |
+| IX Vault Zero-Knowledge | `ANTHROPIC_API_KEY` from the Anthropic key entry in the Forge Vault; `VOYAGE_API_KEY` pending; settings type refuses to render secrets; no-leak test | PASS |
 | X Verification & Proof | Quote verifier, eval harness with derived ground truth, quickstart scenarios with expected numbers | PASS |
 | XI Output Restraint | No dashboards beyond the app itself | PASS |
 

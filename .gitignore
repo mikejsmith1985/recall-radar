@@ -15,6 +15,7 @@ tests/ux/screenshots/
 *.log
 .env
 .env.*
+!.env.example
 eval/results.local.json
 
 # Editors and OS

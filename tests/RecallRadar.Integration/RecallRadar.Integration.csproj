@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -26,6 +26,10 @@
     <ProjectReference Include="..\..\src\RecallRadar.Retrieval\RecallRadar.Retrieval.csproj" />
     <ProjectReference Include="..\..\src\RecallRadar.Ingest\RecallRadar.Ingest.csproj" />
     <ProjectReference Include="..\..\src\RecallRadar.Api\RecallRadar.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

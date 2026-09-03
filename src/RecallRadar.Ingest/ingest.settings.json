@@ -1,0 +1,26 @@
+{
+  "RecallRadar": {
+    "NhtsaApiBaseUrl": "https://api.nhtsa.gov/",
+    "InvestigationsFlatFileUrl": "https://static.nhtsa.gov/odi/ffdd/inv/FLAT_INV.zip",
+    "Vehicles": [
+      {
+        "Make": "FORD",
+        "NhtsaModel": "EXPLORER",
+        "ModelYear": 2013,
+        "DisplayName": "2013 Explorer Sport"
+      },
+      {
+        "Make": "FORD",
+        "NhtsaModel": "F-150 SUPER CREW",
+        "RecallModel": "F-150",
+        "ModelYear": 2014,
+        "DisplayName": "2014 F-150 SVT Raptor"
+      }
+    ]
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning"
+    }
+  }
+}

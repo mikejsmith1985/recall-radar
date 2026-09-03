@@ -1,4 +1,4 @@
-// Checks how the design-time factory picks its connection string, without opening a connection.
+// Checks how the factory resolves its connection string, without opening a connection.
 using Microsoft.EntityFrameworkCore;
 using RecallRadar.Retrieval.Persistence;
 
@@ -7,22 +7,24 @@ namespace RecallRadar.Unit.Persistence;
 public sealed class RecallRadarDbContextFactoryTests
 {
     [Fact]
-    public void ResolveDesignTimeConnection_PrefersEnvironmentVariable()
+    public void ResolveConnection_ReadsTheEnvironmentVariable()
     {
         const string configured = "Host=db.example;Database=other";
 
-        var resolved = RecallRadarDbContextFactory.ResolveDesignTimeConnection(
+        var resolved = RecallRadarDbContextFactory.ResolveConnection(
             name => name == RecallRadarDbContextFactory.ConnectionEnvironmentVariable ? configured : null);
 
         Assert.Equal(configured, resolved);
     }
 
     [Fact]
-    public void ResolveDesignTimeConnection_FallsBackToComposeDatabaseWhenUnset()
+    public void ResolveConnection_HasNoDefaultBecauseADefaultWouldEmbedAPassword()
     {
-        var resolved = RecallRadarDbContextFactory.ResolveDesignTimeConnection(_ => "  ");
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            RecallRadarDbContextFactory.ResolveConnection(_ => "  "));
 
-        Assert.Equal(RecallRadarDbContextFactory.LocalComposeConnection, resolved);
+        Assert.Contains(RecallRadarDbContextFactory.ConnectionEnvironmentVariable, error.Message);
+        Assert.Contains(".env.example", error.Message);
     }
 
     [Fact]
