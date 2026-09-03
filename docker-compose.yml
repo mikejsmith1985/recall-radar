@@ -1,0 +1,22 @@
+# Local PostgreSQL with the pgvector extension. Integration tests do NOT use this;
+# they start their own throwaway container through Testcontainers (Article V).
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: recall-radar-postgres
+    environment:
+      POSTGRES_USER: recallradar
+      POSTGRES_PASSWORD: recallradar-local
+      POSTGRES_DB: recallradar
+    ports:
+      - "5433:5432"
+    volumes:
+      - recall-radar-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recallradar -d recallradar"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  recall-radar-pgdata:

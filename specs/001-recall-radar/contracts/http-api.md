@@ -1,0 +1,92 @@
+# HTTP API Contract: Recall Radar
+
+Base path `/api`. JSON in and out. All responses carry `Content-Type: application/json`.
+Errors use RFC 9457 problem details (`application/problem+json`).
+
+## GET /health
+
+`200 { "status": "ok", "database": "ok", "embeddings": "ok" | "unavailable", "answering": "ok" | "unavailable" }`
+
+`embeddings` is `unavailable` when no `VOYAGE_API_KEY` is configured; `answering` when no
+`ANTHROPIC_API_KEY` is configured.
+
+## GET /api/vehicles
+
+`200 [ { "id": 1, "displayName": "2013 Explorer Sport", "make": "FORD", "modelYear": 2013,
+"counts": { "complaint": 2231, "recall": 12, "investigation": 4 } } ]`
+
+## POST /api/vehicles
+
+Request: `{ "make": "Ford", "modelYear": 2013, "displayName": "2013 Explorer Sport", "nhtsaModelNames": ["EXPLORER"] }`
+
+- `201` with the vehicle body above (counts all zero).
+- `400` problem when a model name is not in NHTSA's list for that make/year (detail names the valid options).
+- `409` problem when the vehicle already exists.
+
+Loading records is a CLI concern (`ingest`), not an API concern; see [cli.md](cli.md).
+
+## GET /api/search
+
+Query: `vehicleId` (required), `q` (required, 2–500 chars), `mode` = `dense|sparse|hybrid` (default
+`hybrid`), `component` (optional exact match), `filedFrom`/`filedTo` (optional ISO dates), `limit`
+(default 10, max 50).
+
+`200`:
+```json
+{
+  "mode": "hybrid",
+  "hits": [
+    {
+      "documentId": 4123, "chunkId": 4123, "kind": "investigation",
+      "externalId": "EA17002", "title": "Exhaust Odor in Passenger Cab",
+      "component": "ENGINE AND ENGINE COOLING:EXHAUST SYSTEM", "filedOn": "2017-07-27",
+      "snippet": "During the EA17-002 investigation, the agency reviewed …",
+      "denseRank": 1, "sparseRank": 3, "fusedScore": 0.03226
+    }
+  ]
+}
+```
+`denseRank`/`sparseRank` are `null` when the hit did not appear in that method's top 50 or the mode
+excluded it.
+
+- `409` problem `"Embeddings are unavailable; use mode=sparse"` for `dense`/`hybrid` when no
+  embedding key is configured or the vehicle has no embedded chunks.
+- `404` when `vehicleId` is unknown.
+
+## POST /api/ask
+
+Request: `{ "vehicleId": 1, "question": "exhaust smell inside the cabin", "mode": "hybrid" }`
+
+`200`:
+```json
+{
+  "answerId": 17,
+  "answer": "Exhaust odor entering the passenger compartment is a documented pattern …",
+  "isKnownPattern": true,
+  "isGrounded": true,
+  "citations": [
+    { "documentId": 4123, "externalId": "EA17002", "kind": "investigation",
+      "quote": "the agency reviewed and analyzed", "startOffset": 41, "endOffset": 73 }
+  ],
+  "droppedCitationCount": 1,
+  "linkedCampaigns": ["17V000000"],
+  "retrievedDocumentIds": [4123, 2210, 2287]
+}
+```
+Rules: every returned citation passed verification; `droppedCitationCount` is the number removed;
+`isGrounded=false` whenever `citations` is empty, and then `answer` explains why (no citations
+survived / model refused / model unavailable). Never `500` for a model-side failure.
+
+- `503` problem when `ANTHROPIC_API_KEY` is not configured.
+
+## GET /api/documents/{id}
+
+`200 { "id": 4123, "kind": "investigation", "externalId": "EA17002", "title": "...", "component": "...",
+"filedOn": "2017-07-27", "body": "<verbatim>", "vehicleId": 1 }` — the UI highlights
+`[startOffset, endOffset)` from a citation inside `body`.
+
+## GET /api/eval
+
+`200 { "latest": { "id": 3, "ranAt": "...", "caseCount": 41,
+"metrics": { "dense": {...}, "sparse": {...}, "hybrid": {...}, "faithfulness": { "emitted": 60, "verified": 58 } } },
+"history": [ ... ] }` — `latest` is `null` before any run. Running the evaluation is a CLI verb.

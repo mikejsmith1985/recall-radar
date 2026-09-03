@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RecallRadar.Api/RecallRadar.Api.csproj" />
+    <Project Path="src/RecallRadar.Domain/RecallRadar.Domain.csproj" />
+    <Project Path="src/RecallRadar.Ingest/RecallRadar.Ingest.csproj" />
+    <Project Path="src/RecallRadar.Retrieval/RecallRadar.Retrieval.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RecallRadar.Integration/RecallRadar.Integration.csproj" />
+    <Project Path="tests/RecallRadar.Unit/RecallRadar.Unit.csproj" />
+  </Folder>
+</Solution>
