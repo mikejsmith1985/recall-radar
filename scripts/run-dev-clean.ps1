@@ -17,6 +17,33 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $PidFile = Join-Path $RepoRoot '.recall-radar.pid'
 $ApiProject = Join-Path $RepoRoot 'src\RecallRadar.Api'
 $StartupGraceSeconds = 4
+$DotEnvFile = Join-Path $RepoRoot '.env'
+
+function Import-DotEnv {
+    <#
+    .SYNOPSIS
+    Loads KEY=VALUE lines from the gitignored .env into this process so the app inherits them.
+
+    .DESCRIPTION
+    The connection string and any local secrets live only in .env (Article IX). Lines that are
+    blank or start with # are ignored. Values already set in the environment are left alone, so
+    a vault-injected value always wins over the file.
+    #>
+    if (-not (Test-Path $DotEnvFile)) {
+        throw "No .env file at $DotEnvFile. Copy .env.example to .env and fill in the values."
+    }
+    foreach ($line in Get-Content $DotEnvFile) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed -or $trimmed.StartsWith('#')) { continue }
+        $separatorIndex = $trimmed.IndexOf('=')
+        if ($separatorIndex -lt 1) { continue }
+        $name = $trimmed.Substring(0, $separatorIndex).Trim()
+        $value = $trimmed.Substring($separatorIndex + 1).Trim().Trim('"')
+        if (-not [Environment]::GetEnvironmentVariable($name)) {
+            [Environment]::SetEnvironmentVariable($name, $value)
+        }
+    }
+}
 
 function Stop-RunningApp {
     <#
@@ -59,6 +86,7 @@ function Start-App {
     if (Test-Path $PidFile) {
         throw "A PID file already exists at $PidFile. Run with -Stop first."
     }
+    Import-DotEnv
 
     $arguments = @('run', '--project', $ApiProject, '--no-launch-profile', '--urls', "http://127.0.0.1:$Port")
     $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments `

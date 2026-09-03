@@ -6,7 +6,7 @@ using RecallRadar.Retrieval.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 
 var settings = AppSettings.Load(
-    builder.Configuration.GetConnectionString("RecallRadar"),
+    builder.Configuration[AppSettings.ConnectionConfigurationKey],
     Environment.GetEnvironmentVariable);
 builder.Services.AddSingleton(settings);
 builder.Services.AddDbContext<RecallRadarDbContext>(options =>
