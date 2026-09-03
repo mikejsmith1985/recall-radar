@@ -21,6 +21,13 @@ namespace RecallRadar.Ingest;
 public static class IngestHost
 {
     public const string ConnectionConfigurationKey = "ConnectionStrings:RecallRadar";
+
+    /// <summary>
+    /// The command's own settings file. Deliberately not called appsettings.json: a project that
+    /// references both this and the API would receive two files of that name in one output folder,
+    /// and whichever built last would silently win.
+    /// </summary>
+    public const string SettingsFileName = "ingest.settings.json";
     public const string ErrorPrefix = "error:";
     private const int SuccessExitCode = 0;
     private const int FailureExitCode = 1;
@@ -38,6 +45,8 @@ public static class IngestHost
             Args = args,
             ContentRootPath = AppContext.BaseDirectory,
         });
+        builder.Configuration.AddJsonFile(
+            Path.Combine(AppContext.BaseDirectory, SettingsFileName), optional: false, reloadOnChange: false);
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
         builder.Services.Configure<IngestOptions>(builder.Configuration.GetSection(IngestOptions.SectionName));
         builder.Services.AddNhtsaClients();

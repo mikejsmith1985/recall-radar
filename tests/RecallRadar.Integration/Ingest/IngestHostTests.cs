@@ -32,26 +32,32 @@ public sealed class IngestHostTests
     }
 
     [Fact]
-    public void CreateBuilder_ReadsItsOwnSettingsFileFromAnyWorkingDirectory()
+    public void CreateBuilder_ReadsItsSettingsFromBesideTheBinaryNotTheWorkingDirectory()
     {
-        // A command-line tool is run from wherever the operator is standing, so its registered
-        // vehicles must not depend on the shell's current directory.
-        var originalDirectory = Directory.GetCurrentDirectory();
-        try
-        {
-            Directory.SetCurrentDirectory(Path.GetTempPath());
-            var builder = IngestHost.CreateBuilder([]);
-            var options = new IngestOptions();
-            builder.Configuration.GetSection(IngestOptions.SectionName).Bind(options);
+        // A command-line tool is run from wherever the operator is standing, so its settings must
+        // travel with the binary. Asserted through the content root rather than by changing the
+        // process directory, which is global state the rest of the suite shares.
+        var builder = IngestHost.CreateBuilder([]);
+        var options = new IngestOptions();
+        builder.Configuration.GetSection(IngestOptions.SectionName).Bind(options);
 
-            Assert.NotEmpty(options.Vehicles);
-            Assert.NotNull(options.FindByDisplayName("2013 Explorer Sport"));
-            Assert.NotNull(options.FindByDisplayName("2014 F-150 SVT Raptor"));
-        }
-        finally
-        {
-            Directory.SetCurrentDirectory(originalDirectory);
-        }
+        Assert.Equal(
+            Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory),
+            Path.TrimEndingDirectorySeparator(builder.Environment.ContentRootPath));
+        Assert.NotEmpty(options.Vehicles);
+        Assert.NotNull(options.FindByDisplayName("2013 Explorer Sport"));
+        Assert.NotNull(options.FindByDisplayName("2014 F-150 SVT Raptor"));
+    }
+
+    [Fact]
+    public void SettingsFile_DoesNotShareItsNameWithAnotherProjectsSettings()
+    {
+        // Two referenced projects that both ship "appsettings.json" land one file in a shared
+        // output folder, and the last build wins. This test failed exactly that way once.
+        var beside = Directory.GetFiles(AppContext.BaseDirectory, "*.settings.json");
+
+        Assert.Contains(IngestHost.SettingsFileName, beside.Select(Path.GetFileName));
+        Assert.NotEqual("appsettings.json", IngestHost.SettingsFileName);
     }
 
     [Fact]

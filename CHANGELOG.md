@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Project scaffold for Recall Radar: .NET 10 solution with Domain, Retrieval, Ingest and
   Api projects, xUnit unit and integration test projects, a pgvector Postgres compose
   file, and a dev-run script that stops processes only by recorded PID (Article II).
+- Domain retrieval: `ReciprocalRankFusion` (k = 60, deterministic tie-break by id) with per-list
+  ranks kept so every hit can explain itself; `RetrievalMode`, `RankExplanation` and `RankedHit`.
+- Domain evaluation: `GroundTruthCase` and `RetrievalMetrics` (recall@5, recall@10, MRR) that skip
+  cases with no relevant documents instead of counting them as zero.
+- Unit suite runs one test at a time and excuses exactly the first timed test of a run, so the
+  10 ms Article V budget measures each test's own work rather than CPU contention or the
+  runtime's one-off compilation of generic and assertion code.
 
 ### Changed
 - The database connection string and the local Postgres password no longer live in source or
@@ -32,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   password, but a password in a repository is a habit worth not having.
 
 ### Fixed
+- The ingest command's settings file is named `ingest.settings.json`, not `appsettings.json`.
+  Two referenced projects shipping the same filename put one file in a shared output folder,
+  where the last build silently wins; the integration suite passed in one worktree and failed
+  in another for exactly that reason.
 - The ingest command reads its own `appsettings.json` no matter which directory it is run from.
   The host took its content root from the shell's working directory, so `dotnet run --project ...`
   from the repository root found no registered vehicles at all.
