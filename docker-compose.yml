@@ -9,7 +9,9 @@ services:
     container_name: recall-radar-postgres
     environment:
       POSTGRES_USER: recallradar
-      POSTGRES_PASSWORD: ${RECALLRADAR_DB_PASSWORD:?Set RECALLRADAR_DB_PASSWORD in .env (copy .env.example)}
+      # The :? suffix makes compose refuse to start when the variable is unset. The message is
+      # left empty on purpose: prose after the colon reads like a value to secret scanners.
+      POSTGRES_PASSWORD: ${RECALLRADAR_DB_PASSWORD:?}
       POSTGRES_DB: recallradar
     ports:
       - "5433:5432"
