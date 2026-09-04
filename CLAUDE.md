@@ -50,8 +50,9 @@ xUnit + NSubstitute / Testcontainers.PostgreSql + WireMock.Net / Cypress + cypre
 |---|---|
 | `Copy-Item .env.example .env` then edit | one-time local setup; `.env` is gitignored and holds the DB password and connection string |
 | `docker compose up -d` | local pgvector Postgres on port 5433 (password from `.env`) |
-| `dotnet build` / `dotnet test tests/RecallRadar.Unit` | build; unit layer (mocked, 10 ms budget) |
-| `dotnet test tests/RecallRadar.Integration` | integration layer (real containers) |
+| `dotnet build` / `dotnet test --project tests/RecallRadar.Unit` | build; unit layer (mocked, 10 ms budget) |
+| `dotnet test --project tests/RecallRadar.Integration` | integration layer (real containers) |
+| `dotnet test` | both layers; xunit v3 on Microsoft.Testing.Platform, no separate test host |
 | `dotnet ef migrations add <Name> -p src/RecallRadar.Retrieval -s src/RecallRadar.Ingest` | schema change |
 | `scripts/run-dev-clean.ps1` / `-Stop` / `-CypressOnly` | run the app by PID file; UX layer |
 

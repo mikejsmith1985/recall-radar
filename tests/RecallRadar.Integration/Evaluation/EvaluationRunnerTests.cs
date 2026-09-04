@@ -23,12 +23,12 @@ public sealed class EvaluationRunnerTests(PostgresFixture postgres) : IAsyncLife
 
     private int _vehicleId;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await using var context = postgres.CreateContext();
         var vehicle = Vehicle.Create("FORD", $"EVAL-{Guid.NewGuid():N}", 2013, $"Eval fixture {Guid.NewGuid():N}");
         context.Vehicles.Add(vehicle);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _vehicleId = vehicle.Id;
 
         var investigationId = await SeedAsync(context, SourceKind.Investigation, "PE16003", InvestigationBody);
@@ -40,10 +40,10 @@ public sealed class EvaluationRunnerTests(PostgresFixture postgres) : IAsyncLife
         }
 
         context.InvestigationLinks.Add(InvestigationLink.Create(investigationId, Campaign, Component, Opened, Closed));
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task ARunScoresEveryModeAndRecordsTheCaseCount()
@@ -86,7 +86,7 @@ public sealed class EvaluationRunnerTests(PostgresFixture postgres) : IAsyncLife
         var stored = await context.EvaluationRuns.AsNoTracking()
             .Where(run => run.VehicleId == _vehicleId)
             .OrderByDescending(run => run.Id)
-            .FirstAsync();
+            .FirstAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(result.CaseCount, stored.CaseCount);
         Assert.Equal(FixedNow, stored.RanAt);
@@ -114,9 +114,9 @@ public sealed class EvaluationRunnerTests(PostgresFixture postgres) : IAsyncLife
         await using var context = postgres.CreateContext();
         var bare = Vehicle.Create("FORD", $"BARE-{Guid.NewGuid():N}", 2015, $"Bare eval fixture {Guid.NewGuid():N}");
         context.Vehicles.Add(bare);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await BuildRunner(context).RunAsync(bare.Id, CancellationToken.None);
+        var result = await BuildRunner(context).RunAsync(bare.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, result.CaseCount);
         Assert.All(result.Modes, mode => Assert.False(mode.WasScored));
@@ -126,7 +126,7 @@ public sealed class EvaluationRunnerTests(PostgresFixture postgres) : IAsyncLife
     private async Task<EvaluationResult> RunAsync(IEmbeddingGenerator<string, Embedding<float>>? generator = null)
     {
         await using var context = postgres.CreateContext();
-        return await BuildRunner(context, generator).RunAsync(_vehicleId, CancellationToken.None);
+        return await BuildRunner(context, generator).RunAsync(_vehicleId, TestContext.Current.CancellationToken);
     }
 
     private static EvaluationRunner BuildRunner(
@@ -141,13 +141,13 @@ public sealed class EvaluationRunnerTests(PostgresFixture postgres) : IAsyncLife
         var document = SourceDocument.Create(
             kind, externalId, _vehicleId, Component, new DateOnly(2016, 4, 1), externalId, body, "{}");
         context.SourceDocuments.Add(document);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         var chunk = DocumentChunk.Create(document.Id, 0, body);
         var generated = await new DeterministicEmbeddingGenerator()
-            .GenerateAsync([body], options: null, CancellationToken.None);
+            .GenerateAsync([body], options: null, TestContext.Current.CancellationToken);
         chunk.SetEmbedding(new Pgvector.Vector(generated[0].Vector));
         context.DocumentChunks.Add(chunk);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         return document.Id;
     }
 

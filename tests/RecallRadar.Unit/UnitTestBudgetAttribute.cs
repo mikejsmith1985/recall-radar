@@ -8,12 +8,9 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecallRadar.Retrieval.Persistence;
-using Xunit.Sdk;
+using Xunit.v3;
 
 [assembly: RecallRadar.Unit.UnitTestBudget]
-// Classes run one at a time: the check below measures wall-clock time, and twenty classes starting
-// at once would charge each first test for the others' start-up rather than its own work.
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace RecallRadar.Unit;
 
@@ -75,13 +72,13 @@ public sealed class UnitTestBudgetAttribute : BeforeAfterTestAttribute
     private static readonly ConcurrentDictionary<string, long> OverBudgetTests = new();
     private static readonly Lazy<bool> WarmUp = new(WarmUpRuntime, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    public override void Before(MethodInfo methodUnderTest)
+    public override void Before(MethodInfo methodUnderTest, IXunitTest test)
     {
         _ = WarmUp.Value;
         Timers[methodUnderTest] = Stopwatch.StartNew();
     }
 
-    public override void After(MethodInfo methodUnderTest)
+    public override void After(MethodInfo methodUnderTest, IXunitTest test)
     {
         if (!Timers.TryRemove(methodUnderTest, out var timer))
         {

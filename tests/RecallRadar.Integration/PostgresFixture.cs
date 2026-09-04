@@ -19,14 +19,14 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public string ConnectionString => _container.GetConnectionString();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _container.StartAsync();
         await using var context = CreateContext();
         await context.Database.MigrateAsync();
     }
 
-    public Task DisposeAsync() => _container.DisposeAsync().AsTask();
+    public ValueTask DisposeAsync() => _container.DisposeAsync();
 
     /// <summary>Opens a fresh context against the container with the production Npgsql + pgvector wiring.</summary>
     public RecallRadarDbContext CreateContext()

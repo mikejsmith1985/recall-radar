@@ -24,7 +24,7 @@ public sealed class EvalEndpointsTests(PostgresFixture postgres)
         await StoreRunAsync(vehicleId, Later, caseCount: 41, """{"sparse":{"metrics":{"recallAt5":0.6}}}""");
 
         using var client = CreateClient();
-        var response = await client.GetFromJsonAsync<EvaluationsResponse>("/api/eval");
+        var response = await client.GetFromJsonAsync<EvaluationsResponse>("/api/eval", TestContext.Current.CancellationToken);
 
         Assert.NotNull(response!.Latest);
         Assert.Equal(41, response.Latest!.CaseCount);
@@ -41,7 +41,7 @@ public sealed class EvalEndpointsTests(PostgresFixture postgres)
         await StoreRunAsync(vehicleId, Later, 5, """{"sparse":{"metrics":{"recallAt5":0.25},"skippedReason":null}}""");
 
         using var client = CreateClient();
-        var response = await client.GetFromJsonAsync<EvaluationsResponse>("/api/eval");
+        var response = await client.GetFromJsonAsync<EvaluationsResponse>("/api/eval", TestContext.Current.CancellationToken);
 
         var sparse = response!.Latest!.Metrics.GetProperty("sparse");
         Assert.Equal(0.25, sparse.GetProperty("metrics").GetProperty("recallAt5").GetDouble());
@@ -55,8 +55,8 @@ public sealed class EvalEndpointsTests(PostgresFixture postgres)
         var runsExist = context.EvaluationRuns.Any();
 
         using var client = CreateClient();
-        var response = await client.GetAsync("/api/eval");
-        var payload = await response.Content.ReadFromJsonAsync<EvaluationsResponse>();
+        var response = await client.GetAsync("/api/eval", TestContext.Current.CancellationToken);
+        var payload = await response.Content.ReadFromJsonAsync<EvaluationsResponse>(TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         if (!runsExist)
@@ -82,7 +82,7 @@ public sealed class EvalEndpointsTests(PostgresFixture postgres)
         await using var context = postgres.CreateContext();
         var vehicle = Vehicle.Create("FORD", $"EVALEP-{Guid.NewGuid():N}", 2013, $"Eval endpoint fixture {Guid.NewGuid():N}");
         context.Vehicles.Add(vehicle);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         return vehicle.Id;
     }
 
@@ -90,7 +90,7 @@ public sealed class EvalEndpointsTests(PostgresFixture postgres)
     {
         await using var context = postgres.CreateContext();
         context.EvaluationRuns.Add(EvaluationRun.Create(vehicleId, ranAt, caseCount, metricsJson));
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
     private HttpClient CreateClient() =>

@@ -33,8 +33,8 @@ public sealed class IngestServiceTests(PostgresFixture postgres) : IDisposable
         Assert.Contains("chunks: created 0", second.Stdout);
 
         await using var context = postgres.CreateContext();
-        var vehicle = await context.Vehicles.SingleAsync(entity => entity.NhtsaModel == "EXPLORER" && entity.ModelYear == NhtsaFixtureServer.FixtureModelYear);
-        var documents = await context.SourceDocuments.Where(entity => entity.VehicleId == vehicle.Id).ToListAsync();
+        var vehicle = await context.Vehicles.SingleAsync(entity => entity.NhtsaModel == "EXPLORER" && entity.ModelYear == NhtsaFixtureServer.FixtureModelYear, TestContext.Current.CancellationToken);
+        var documents = await context.SourceDocuments.Where(entity => entity.VehicleId == vehicle.Id).ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(5, documents.Count(entity => entity.Kind == SourceKind.Complaint));
         Assert.Equal(3, documents.Count(entity => entity.Kind == SourceKind.Recall));
         Assert.Equal(2, documents.Count(entity => entity.Kind == SourceKind.Investigation));
@@ -43,9 +43,10 @@ public sealed class IngestServiceTests(PostgresFixture postgres) : IDisposable
         // Scoped to this test's own vehicle: the container is shared, and other tests create links
         // of their own. An unscoped Single here passed alone and failed in company.
         var link = await context.InvestigationLinks
-            .SingleAsync(entity => entity.InvestigationDocument!.VehicleId == vehicle.Id);
+            .SingleAsync(entity => entity.InvestigationDocument!.VehicleId == vehicle.Id, TestContext.Current.CancellationToken);
         Assert.Equal("19V435000", link.CampaignNumber);
-        Assert.Equal(10, await context.DocumentChunks.CountAsync(entity => entity.Document!.VehicleId == vehicle.Id));
+        Assert.Equal(10, await context.DocumentChunks.CountAsync(
+            entity => entity.Document!.VehicleId == vehicle.Id, TestContext.Current.CancellationToken));
         Assert.All(_nhtsa.ReceivedMethods, method => Assert.Equal("GET", method));
     }
 
@@ -59,7 +60,7 @@ public sealed class IngestServiceTests(PostgresFixture postgres) : IDisposable
         Assert.Equal(1, result.ExitCode);
         Assert.StartsWith(IngestHost.ErrorPrefix, result.Stderr.Trim());
         await using var context = postgres.CreateContext();
-        Assert.False(await context.Vehicles.AnyAsync(entity => entity.NhtsaModel == FailingModel));
+        Assert.False(await context.Vehicles.AnyAsync(entity => entity.NhtsaModel == FailingModel, TestContext.Current.CancellationToken));
     }
 
     [Fact]

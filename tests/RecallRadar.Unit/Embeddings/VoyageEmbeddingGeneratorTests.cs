@@ -38,7 +38,7 @@ public sealed class VoyageEmbeddingGeneratorTests
         using var generator = BuildGenerator(handler);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => generator.GenerateAsync(inputs, cancellationToken: CancellationToken.None));
+            () => generator.GenerateAsync(inputs, cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Equal([VoyageEmbeddingGenerator.MaxBatchSize], handler.BatchSizes);
     }
@@ -50,7 +50,7 @@ public sealed class VoyageEmbeddingGeneratorTests
         var handler = new RecordingHandler(batch => BuildEmptyDataResponse(batch.Count));
         using var generator = BuildGenerator(handler);
 
-        var embeddings = await generator.GenerateAsync(inputs, cancellationToken: CancellationToken.None);
+        var embeddings = await generator.GenerateAsync(inputs, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(embeddings);
         Assert.Equal([VoyageEmbeddingGenerator.MaxBatchSize, 5], handler.BatchSizes);
@@ -62,7 +62,7 @@ public sealed class VoyageEmbeddingGeneratorTests
         var handler = new RecordingHandler(_ => BuildResponseWithFirstComponents([0.25f, -0.5f]));
         using var generator = BuildGenerator(handler);
 
-        var embeddings = await generator.GenerateAsync(["one", "two"], cancellationToken: CancellationToken.None);
+        var embeddings = await generator.GenerateAsync(["one", "two"], cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, embeddings.Count);
         Assert.Equal(0.25f, embeddings[0].Vector.Span[0]);
@@ -75,7 +75,7 @@ public sealed class VoyageEmbeddingGeneratorTests
         var handler = new RecordingHandler(batch => BuildSuccessResponse(batch.Count));
         using var generator = BuildGenerator(handler);
 
-        var embeddings = await generator.GenerateAsync([], cancellationToken: CancellationToken.None);
+        var embeddings = await generator.GenerateAsync([], cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(embeddings);
         Assert.Empty(handler.BatchSizes);
@@ -88,7 +88,7 @@ public sealed class VoyageEmbeddingGeneratorTests
         using var generator = BuildGenerator(handler);
         var options = VoyageEmbeddingGenerator.ForQuery();
 
-        await generator.GenerateAsync(["exhaust smell"], options, CancellationToken.None);
+        await generator.GenerateAsync(["exhaust smell"], options, TestContext.Current.CancellationToken);
 
         Assert.Contains($"\"input_type\":\"{VoyageEmbeddingGenerator.QueryInputType}\"", handler.LastRequestBody, StringComparison.Ordinal);
     }
@@ -102,7 +102,7 @@ public sealed class VoyageEmbeddingGeneratorTests
         using var generator = BuildGenerator(handler);
 
         var failure = await Assert.ThrowsAsync<EmbeddingsUnavailableException>(
-            () => generator.GenerateAsync(["text"], cancellationToken: CancellationToken.None));
+            () => generator.GenerateAsync(["text"], cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Contains(EmbeddingsUnavailableException.ApiKeyVariable, failure.Reason, StringComparison.Ordinal);
     }
@@ -117,7 +117,7 @@ public sealed class VoyageEmbeddingGeneratorTests
         using var generator = BuildGenerator(handler);
 
         var failure = await Assert.ThrowsAsync<EmbeddingsUnavailableException>(
-            () => generator.GenerateAsync(["text"], cancellationToken: CancellationToken.None));
+            () => generator.GenerateAsync(["text"], cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.DoesNotContain(FakeKey, failure.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain(FakeKey, failure.Reason, StringComparison.Ordinal);
@@ -132,7 +132,7 @@ public sealed class VoyageEmbeddingGeneratorTests
         using var generator = BuildGenerator(handler);
 
         var failure = await Assert.ThrowsAsync<EmbeddingProviderUnavailableException>(
-            () => generator.GenerateAsync(["text"], cancellationToken: CancellationToken.None));
+            () => generator.GenerateAsync(["text"], cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Contains("500", failure.Message, StringComparison.Ordinal);
         Assert.Contains("mode=sparse", failure.Message, StringComparison.Ordinal);
@@ -145,7 +145,7 @@ public sealed class VoyageEmbeddingGeneratorTests
         using var generator = BuildGenerator(handler);
 
         var failure = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => generator.GenerateAsync(["text"], cancellationToken: CancellationToken.None));
+            () => generator.GenerateAsync(["text"], cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Contains(DocumentChunk.EmbeddingDimensions.ToString(), failure.Message, StringComparison.Ordinal);
     }

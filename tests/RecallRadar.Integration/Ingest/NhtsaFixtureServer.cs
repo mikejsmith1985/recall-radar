@@ -4,6 +4,7 @@ using System.Text;
 using WireMock.RequestBuilders;
 using WireMock.ResponseBuilders;
 using WireMock.Server;
+using WireMock.Settings;
 
 namespace RecallRadar.Integration.Ingest;
 
@@ -38,7 +39,13 @@ public sealed class NhtsaFixtureServer : IDisposable
         "PE99999\tTOYOTA\tTUNDRA\t2014\tPOWER TRAIN\tToyota\t20160301\t\t\tSubject\tSummary.",
     ];
 
-    private readonly WireMockServer _server = WireMockServer.Start();
+    // Bound to the loopback address explicitly. WireMock's default binding covers every network
+    // interface, which makes Windows Firewall prompt the developer the first time each build of
+    // this assembly runs. Nothing outside this machine ever needs to reach a test stub.
+    private readonly WireMockServer _server = WireMockServer.Start(new WireMockServerSettings
+    {
+        Urls = ["http://127.0.0.1:0"],
+    });
 
     public string BaseUrl => _server.Url! + "/";
     public string FlatFileUrl => _server.Url! + FlatFilePath;
