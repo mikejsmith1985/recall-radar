@@ -51,7 +51,8 @@ public static class IngestCommandLine
                 host => IngestHost.RunIngestAsync(host, vehicle, stdout, stderr, cancellationToken), configureHost),
             (vehicle, cancellationToken) => RunInHostAsync(
                 host => IngestHost.RunEmbedAsync(host, vehicle, stdout, stderr, cancellationToken), configureHost),
-            _ => RunNotImplementedAsync(stderr, EvalVerb));
+            cancellationToken => RunInHostAsync(
+                host => IngestHost.RunEvalAsync(host, stdout, stderr, cancellationToken), configureHost));
         return root.Parse(args).InvokeAsync();
     }
 

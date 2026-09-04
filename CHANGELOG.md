@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A retrieval evaluation whose ground truth is derived rather than hand-labelled. NHTSA records
+  which component an investigation concerns, when it was open, and which recall it produced, so the
+  relevant records are the investigation and its recall and the queries are the complaints filed
+  about that component while it was open. `eval` scores every retrieval mode over identical cases,
+  stores the run, and writes `eval/results.json`. A mode that cannot run reports why rather than
+  scoring zero, because zero reads as "this mode is bad" when it means "it was never tried".
+- `GET /api/eval` returns the latest run and the runs behind it, with metrics handed back in the
+  shape they were stored so an older run keeps its own fields. Before any run it returns null
+  rather than a table of zeroes, which would read as a result.
+- A README carrying the measured numbers, including what they do not measure.
 - A grounded answer to a symptom question. Retrieved records go to Claude with a schema that makes
   citations data rather than prose, and every quote is then checked character for character against
   the record it names. Quotes that fail are dropped and reported with the reason. An answer whose
@@ -66,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   password, but a password in a repository is a habit worth not having.
 
 ### Fixed
+- An integration test asserted over the whole investigation-links table with no filter, so it
+  passed alone and failed once other tests wrote links of their own. Scoped to its own vehicle.
 - A question now matches records. Keyword search joined every word of the query with AND, so a
   real question ("I get a strong exhaust smell inside the cabin when I accelerate") matched nothing
   at all, while a three-word phrase happened to work. Terms are now joined with OR and ranked by

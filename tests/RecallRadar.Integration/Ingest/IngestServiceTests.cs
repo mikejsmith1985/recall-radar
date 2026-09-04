@@ -40,7 +40,10 @@ public sealed class IngestServiceTests(PostgresFixture postgres) : IDisposable
         Assert.Equal(2, documents.Count(entity => entity.Kind == SourceKind.Investigation));
         var exhaust = documents.Single(entity => entity.ExternalId == "EA17002");
         Assert.Equal("ENGINE AND ENGINE COOLING:EXHAUST SYSTEM; STRUCTURE:BODY", exhaust.Component);
-        var link = await context.InvestigationLinks.SingleAsync();
+        // Scoped to this test's own vehicle: the container is shared, and other tests create links
+        // of their own. An unscoped Single here passed alone and failed in company.
+        var link = await context.InvestigationLinks
+            .SingleAsync(entity => entity.InvestigationDocument!.VehicleId == vehicle.Id);
         Assert.Equal("19V435000", link.CampaignNumber);
         Assert.Equal(10, await context.DocumentChunks.CountAsync(entity => entity.Document!.VehicleId == vehicle.Id));
         Assert.All(_nhtsa.ReceivedMethods, method => Assert.Equal("GET", method));

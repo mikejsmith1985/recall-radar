@@ -19,6 +19,7 @@ public sealed class RecallRadarDbContext(DbContextOptions<RecallRadarDbContext> 
     public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
     public DbSet<InvestigationLink> InvestigationLinks => Set<InvestigationLink>();
     public DbSet<Answer> Answers => Set<Answer>();
+    public DbSet<EvaluationRun> EvaluationRuns => Set<EvaluationRun>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +29,7 @@ public sealed class RecallRadarDbContext(DbContextOptions<RecallRadarDbContext> 
         ConfigureDocumentChunk(modelBuilder);
         ConfigureInvestigationLink(modelBuilder);
         ConfigureAnswer(modelBuilder);
+        ConfigureEvaluationRun(modelBuilder);
     }
 
     private static void ConfigureVehicle(ModelBuilder modelBuilder)
@@ -75,6 +77,15 @@ public sealed class RecallRadarDbContext(DbContextOptions<RecallRadarDbContext> 
         link.Property(entity => entity.Component).HasMaxLength(256);
         link.HasOne(entity => entity.InvestigationDocument).WithMany().HasForeignKey(entity => entity.InvestigationDocumentId);
         link.HasIndex(entity => entity.CampaignNumber);
+    }
+
+    private static void ConfigureEvaluationRun(ModelBuilder modelBuilder)
+    {
+        var run = modelBuilder.Entity<EvaluationRun>();
+        run.ToTable("evaluation_runs");
+        run.Property(entity => entity.MetricsJson).HasColumnType("jsonb");
+        // Newest first is how every reader wants this: the latest run, then the trend behind it.
+        run.HasIndex(entity => entity.RanAt).IsDescending();
     }
 
     private static void ConfigureAnswer(ModelBuilder modelBuilder)

@@ -1,5 +1,6 @@
 // Builds the Generic Host the CLI verbs run inside, and runs the ingest verb to completion.
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,8 +10,10 @@ using Microsoft.Extensions.Options;
 using RecallRadar.Ingest.Commands;
 using RecallRadar.Ingest.Config;
 using RecallRadar.Ingest.Nhtsa;
+using RecallRadar.Retrieval.Evaluation;
 using RecallRadar.Retrieval.Embeddings;
 using RecallRadar.Retrieval.Persistence;
+using RecallRadar.Retrieval.Search;
 
 namespace RecallRadar.Ingest;
 
@@ -30,6 +33,13 @@ public static class IngestHost
     /// and whichever built last would silently win.
     /// </summary>
     public const string SettingsFileName = "ingest.settings.json";
+
+    /// <summary>Where the evaluation writes its results, relative to the repository root.</summary>
+    public const string ResultsDirectoryName = "eval";
+
+    public const string ResultsFileName = "results.json";
+
+    private const string SolutionFileName = "RecallRadar.slnx";
     public const string ErrorPrefix = "error:";
     private const int SuccessExitCode = 0;
     private const int FailureExitCode = 1;
@@ -55,6 +65,10 @@ public static class IngestHost
         builder.Services.AddDbContext<RecallRadarDbContext>((provider, options) =>
             RecallRadarDbContextFactory.Configure(options, ResolveConnection(provider.GetRequiredService<IConfiguration>())));
         builder.Services.AddScoped<IngestService>();
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddScoped<HybridSearchService>();
+        builder.Services.AddScoped<GroundTruthBuilder>();
+        builder.Services.AddScoped<EvaluationRunner>();
 
         // Voyage when a key is configured, otherwise a generator that refuses. The embed verb asks
         // which one it got before touching the database, so a missing key fails with one clear line.
@@ -138,6 +152,66 @@ public static class IngestHost
             await stderr.WriteLineAsync($"{ErrorPrefix} {exception.Message}");
             return FailureExitCode;
         }
+    }
+
+    /// <summary>
+    /// Scores retrieval against the derived ground truth and writes the results file. Exit 0 or 1.
+    /// </summary>
+    /// <remarks>
+    /// The results file is written next to the repository rather than only printed, because the
+    /// numbers are meant to be committed and compared, not read once and lost to scrollback.
+    /// </remarks>
+    public static async Task<int> RunEvalAsync(
+        IHost host, TextWriter stdout, TextWriter stderr, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            await using var scope = host.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<RecallRadarDbContext>().Database.MigrateAsync(cancellationToken);
+            var result = await scope.ServiceProvider.GetRequiredService<EvaluationRunner>()
+                .RunAsync(vehicleId: null, cancellationToken);
+
+            foreach (var line in EvalReport.FormatLines(result, stopwatch.Elapsed))
+            {
+                await stdout.WriteLineAsync(line);
+            }
+
+            var path = await WriteResultsFileAsync(result, cancellationToken);
+            await stdout.WriteLineAsync($"written: {path}");
+            return SuccessExitCode;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            await stderr.WriteLineAsync($"{ErrorPrefix} {exception.Message}");
+            return FailureExitCode;
+        }
+    }
+
+    /// <summary>Writes the results where they can be committed beside the code that produced them.</summary>
+    private static async Task<string> WriteResultsFileAsync(EvaluationResult result, CancellationToken cancellationToken)
+    {
+        var directory = Path.Combine(FindRepositoryRoot(), ResultsDirectoryName);
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, ResultsFileName);
+        await File.WriteAllTextAsync(
+            path,
+            JsonSerializer.Serialize(result, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true }),
+            cancellationToken);
+        return path;
+    }
+
+    /// <summary>Walks up from the binary to the repository root, identified by the solution file.</summary>
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, SolutionFileName)))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? AppContext.BaseDirectory;
     }
 
     private static VehicleRegistration FindRegistration(IServiceProvider services, string vehicleDisplayName)
