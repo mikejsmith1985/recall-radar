@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- The browser suite runs. A `UxFixture` environment seeds a throwaway database with the states the
+  specs have to tell apart, and answers come from a scripted model rather than Claude, so a run
+  costs nothing, finishes in seconds, and asserts the same thing every time. The scripted reply
+  offers one quote that exists in a seeded record and one that does not, which exercises both
+  halves of verification in a single run.
+- The API serves the built web client from the same origin, so the page's own calls need no proxy.
+  An unknown path under `/api` still answers 404 rather than handing back the page, which would
+  leave a caller parsing HTML as though it were a result.
 - A retrieval evaluation whose ground truth is derived rather than hand-labelled. NHTSA records
   which component an investigation concerns, when it was open, and which recall it produced, so the
   relevant records are the investigation and its recall and the queries are the complaints filed
@@ -83,6 +91,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   password, but a password in a repository is a habit worth not having.
 
 ### Fixed
+- The evaluation table no longer breaks on a mode that did not run. The API wrapped each mode's
+  numbers in an object the client did not expect, so it read a missing field and threw. Each mode
+  now maps straight to its numbers or to null, with the reasons beside them, which is the shape the
+  contract describes and the client was written against.
 - An integration test asserted over the whole investigation-links table with no filter, so it
   passed alone and failed once other tests wrote links of their own. Scoped to its own vehicle.
 - A question now matches records. Keyword search joined every word of the query with AND, so a

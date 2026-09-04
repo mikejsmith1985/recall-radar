@@ -1,5 +1,7 @@
 // Reports what the server can actually do right now, so the client disables what it cannot.
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RecallRadar.Api.Answering;
 using RecallRadar.Api.Config;
 using RecallRadar.Retrieval.Persistence;
 
@@ -24,14 +26,18 @@ public static class HealthEndpoints
     }
 
     private static async Task<IResult> ReportHealthAsync(
-        RecallRadarDbContext database, AppSettings settings, CancellationToken cancellationToken)
+        RecallRadarDbContext database, AppSettings settings, IServiceProvider services, CancellationToken cancellationToken)
     {
         var isDatabaseReachable = await CanReachDatabaseAsync(database, cancellationToken);
+
+        // Answering is reported from what is registered rather than from the key, so the answer
+        // this gives always matches what the ask endpoint will actually do.
+        var canAnswer = services.GetService<AnswerService>() is not null;
         var report = new HealthResponse(
             isDatabaseReachable ? Available : Unavailable,
             isDatabaseReachable ? Available : Unavailable,
             settings.HasVoyageKey ? Available : Unavailable,
-            settings.HasAnthropicKey ? Available : Unavailable);
+            canAnswer ? Available : Unavailable);
 
         return isDatabaseReachable
             ? Results.Ok(report)

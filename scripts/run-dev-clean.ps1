@@ -17,6 +17,7 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $PidFile = Join-Path $RepoRoot '.recall-radar.pid'
 $ApiProject = Join-Path $RepoRoot 'src\RecallRadar.Api'
 $StartupGraceSeconds = 4
+$StartupAttempts = 60
 $DotEnvFile = Join-Path $RepoRoot '.env'
 
 function Import-DotEnv {
@@ -81,20 +82,93 @@ function Start-App {
     ASP.NET Core environment name. "UxFixture" serves the seeded throwaway
     database the Cypress suite depends on; "Development" uses the compose database.
     #>
-    param([string]$Environment = 'Development')
+    param([string]$Environment = 'Development', [string]$ConnectionString = $null)
 
     if (Test-Path $PidFile) {
         throw "A PID file already exists at $PidFile. Run with -Stop first."
     }
     Import-DotEnv
 
+    $childEnvironment = @{ ASPNETCORE_ENVIRONMENT = $Environment }
+    if ($ConnectionString) { $childEnvironment['RECALLRADAR_CONNECTION'] = $ConnectionString }
+
     $arguments = @('run', '--project', $ApiProject, '--no-launch-profile', '--urls', "http://127.0.0.1:$Port")
     $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments `
         -WorkingDirectory $RepoRoot -PassThru `
-        -Environment @{ ASPNETCORE_ENVIRONMENT = $Environment }
+        -Environment $childEnvironment
     $process.Id | Out-File -FilePath $PidFile -Encoding ascii -NoNewline
     Write-Host "Started process $($process.Id) on http://127.0.0.1:$Port ($Environment)"
     return $process.Id
+}
+
+function Build-WebClient {
+    <#
+    .SYNOPSIS
+    Builds the web client into the API's wwwroot so the browser suite loads the real page.
+    #>
+    Push-Location (Join-Path $RepoRoot 'web')
+    try {
+        if (-not (Test-Path 'node_modules')) { npm ci }
+        npm run build
+        if ($LASTEXITCODE -ne 0) { throw "The web client build failed with exit code $LASTEXITCODE." }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+function New-FixtureDatabase {
+    <#
+    .SYNOPSIS
+    Creates an empty throwaway database for the browser suite and returns its connection string.
+
+    .DESCRIPTION
+    A separate database, dropped and recreated each run, so the suite always starts from the same
+    fixture and a developer's own loaded records are never touched by running the tests.
+    #>
+    Import-DotEnv
+    $developerConnection = [Environment]::GetEnvironmentVariable('RECALLRADAR_CONNECTION')
+    if (-not $developerConnection) { throw 'RECALLRADAR_CONNECTION is not set. Copy .env.example to .env.' }
+
+    $fixtureSettings = @{}
+    foreach ($pair in $developerConnection.Split(';')) {
+        if (-not $pair) { continue }
+        $separator = $pair.IndexOf('=')
+        if ($separator -lt 1) { continue }
+        $fixtureSettings[$pair.Substring(0, $separator).Trim()] = $pair.Substring($separator + 1).Trim()
+    }
+
+    $sourceDatabase = $fixtureSettings['Database']
+    $fixtureDatabase = "$($sourceDatabase)_uxfixture"
+    $user = $fixtureSettings['Username']
+
+    docker exec recall-radar-postgres psql -U $user -d $sourceDatabase -q `
+        -c "DROP DATABASE IF EXISTS $fixtureDatabase" -c "CREATE DATABASE $fixtureDatabase" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Could not recreate the fixture database. Is docker compose up?' }
+
+    $fixtureSettings['Database'] = $fixtureDatabase
+    return (($fixtureSettings.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ';')
+}
+
+function Wait-ForApp {
+    <#
+    .SYNOPSIS
+    Waits until the application answers, rather than assuming a fixed delay is long enough.
+    #>
+    for ($attempt = 1; $attempt -le $StartupAttempts; $attempt++) {
+        try {
+            $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 5
+            if ($health.database -eq 'ok') {
+                Write-Host "Application is ready (answering: $($health.answering))."
+                return
+            }
+        }
+        catch {
+            Start-Sleep -Seconds 1
+        }
+    }
+
+    throw "The application did not become ready within $StartupAttempts seconds."
 }
 
 function Invoke-CypressSuite {
@@ -103,17 +177,25 @@ function Invoke-CypressSuite {
     Runs the Cypress suite against a freshly seeded application, then stops it.
 
     .DESCRIPTION
-    The fixture matters as much as the run. The support file refuses to start
-    against an empty database, so a green run proves the UI works on real data.
+    The fixture matters as much as the run. The support file refuses to start against an empty
+    database, so a green run proves the interface works on records that are actually there.
     #>
     Stop-RunningApp
-    $startedPid = Start-App -Environment 'UxFixture'
+    Build-WebClient
+    $fixtureConnection = New-FixtureDatabase
+    $startedPid = Start-App -Environment 'UxFixture' -ConnectionString $fixtureConnection
     try {
-        Start-Sleep -Seconds $StartupGraceSeconds
+        Wait-ForApp
         Push-Location (Join-Path $RepoRoot 'tests\ux')
-        npx cypress run
-        $exitCode = $LASTEXITCODE
-        Pop-Location
+        try {
+            if (-not (Test-Path 'node_modules')) { npm ci }
+            npx cypress install | Out-Null
+            npx cypress run
+            $exitCode = $LASTEXITCODE
+        }
+        finally {
+            Pop-Location
+        }
         if ($exitCode -ne 0) { throw "Cypress failed with exit code $exitCode." }
     }
     finally {
