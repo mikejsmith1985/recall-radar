@@ -16,7 +16,7 @@ public sealed class IngestCommandLineTests
             (_, _) => Task.FromResult(UnusedHandlerExitCode),
             _ => Task.FromResult(UnusedHandlerExitCode));
 
-        var exitCode = await root.Parse(["ingest", "--vehicle", "2013 Explorer Sport"]).InvokeAsync();
+        var exitCode = await root.Parse(["ingest", "--vehicle", "2013 Explorer Sport"]).InvokeAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("2013 Explorer Sport", received);
@@ -43,7 +43,7 @@ public sealed class IngestCommandLineTests
         string? received = null;
         var root = BuildWithEmbedHandler(vehicle => received = vehicle);
 
-        var exitCode = await root.Parse(["embed", "--vehicle", "2014 F-150 SVT Raptor"]).InvokeAsync();
+        var exitCode = await root.Parse(["embed", "--vehicle", "2014 F-150 SVT Raptor"]).InvokeAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("2014 F-150 SVT Raptor", received);
@@ -57,7 +57,7 @@ public sealed class IngestCommandLineTests
         var root = BuildWithEmbedHandler(vehicle => { wasHandlerCalled = true; received = vehicle; });
 
         var parseResult = root.Parse(["embed"]);
-        var exitCode = await parseResult.InvokeAsync();
+        var exitCode = await parseResult.InvokeAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(parseResult.Errors);
         Assert.Equal(0, exitCode);
@@ -73,7 +73,7 @@ public sealed class IngestCommandLineTests
             (_, _) => Task.FromResult(1),
             _ => Task.FromResult(42));
 
-        var exitCode = await root.Parse(["eval"]).InvokeAsync();
+        var exitCode = await root.Parse(["eval"]).InvokeAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(42, exitCode);
     }

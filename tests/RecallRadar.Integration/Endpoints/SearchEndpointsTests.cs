@@ -17,32 +17,33 @@ public sealed class SearchEndpointsTests(PostgresFixture postgres) : IAsyncLifet
     private int _vehicleId;
     private string _displayName = string.Empty;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await using var context = postgres.CreateContext();
         _displayName = $"Endpoint fixture {Guid.NewGuid():N}";
         var vehicle = Vehicle.Create("FORD", $"ENDPOINT-{Guid.NewGuid():N}", 2013, _displayName);
         context.Vehicles.Add(vehicle);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _vehicleId = vehicle.Id;
 
         var document = SourceDocument.Create(
             SourceKind.Complaint, $"endpoint-{Guid.NewGuid():N}", _vehicleId, Component,
             new DateOnly(2016, 5, 1), "Exhaust odor complaint", ComplaintBody, "{}");
         context.SourceDocuments.Add(document);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         context.DocumentChunks.Add(DocumentChunk.Create(document.Id, 0, ComplaintBody));
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task Vehicles_ListsTheFixtureVehicleWithItsRecordCounts()
     {
         using var client = CreateClient();
 
-        var vehicles = await client.GetFromJsonAsync<List<VehicleResponse>>("/api/vehicles");
+        var vehicles = await client.GetFromJsonAsync<List<VehicleResponse>>(
+            "/api/vehicles", TestContext.Current.CancellationToken);
 
         var fixture = Assert.Single(vehicles!, vehicle => vehicle.Id == _vehicleId);
         Assert.Equal(_displayName, fixture.DisplayName);
@@ -56,7 +57,7 @@ public sealed class SearchEndpointsTests(PostgresFixture postgres) : IAsyncLifet
         using var client = CreateClient();
 
         var response = await client.GetFromJsonAsync<SearchResponse>(
-            $"/api/search?vehicleId={_vehicleId}&q=exhaust%20odor&mode=sparse");
+            $"/api/search?vehicleId={_vehicleId}&q=exhaust%20odor&mode=sparse", TestContext.Current.CancellationToken);
 
         Assert.Equal("sparse", response!.Mode);
         var hit = Assert.Single(response.Hits);
@@ -74,8 +75,8 @@ public sealed class SearchEndpointsTests(PostgresFixture postgres) : IAsyncLifet
 
         foreach (var mode in new[] { "dense", "hybrid" })
         {
-            var response = await client.GetAsync($"/api/search?vehicleId={_vehicleId}&q=exhaust&mode={mode}");
-            var problem = await response.Content.ReadAsStringAsync();
+            var response = await client.GetAsync($"/api/search?vehicleId={_vehicleId}&q=exhaust&mode={mode}", TestContext.Current.CancellationToken);
+            var problem = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
             Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
             Assert.Contains("sparse", problem, StringComparison.OrdinalIgnoreCase);
@@ -87,7 +88,7 @@ public sealed class SearchEndpointsTests(PostgresFixture postgres) : IAsyncLifet
     {
         using var client = CreateClient();
 
-        var response = await client.GetAsync("/api/search?vehicleId=-1&q=exhaust&mode=sparse");
+        var response = await client.GetAsync("/api/search?vehicleId=-1&q=exhaust&mode=sparse", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -100,7 +101,7 @@ public sealed class SearchEndpointsTests(PostgresFixture postgres) : IAsyncLifet
     {
         using var client = CreateClient();
 
-        var response = await client.GetAsync($"/api/search?vehicleId={_vehicleId}&{query}");
+        var response = await client.GetAsync($"/api/search?vehicleId={_vehicleId}&{query}", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -110,7 +111,7 @@ public sealed class SearchEndpointsTests(PostgresFixture postgres) : IAsyncLifet
     {
         using var client = CreateClient();
 
-        var response = await client.GetAsync($"/api/search?vehicleId={_vehicleId}&q=exhaust");
+        var response = await client.GetAsync($"/api/search?vehicleId={_vehicleId}&q=exhaust", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }

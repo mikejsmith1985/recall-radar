@@ -19,8 +19,8 @@ public sealed class HealthEndpointsTests(PostgresFixture postgres)
         await using var factory = CreateFactory(postgres.ConnectionString);
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/health");
-        var report = await response.Content.ReadFromJsonAsync<HealthResponse>();
+        var response = await client.GetAsync("/health", TestContext.Current.CancellationToken);
+        var report = await response.Content.ReadFromJsonAsync<HealthResponse>(TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(HealthEndpoints.Available, report!.Status);
@@ -36,8 +36,8 @@ public sealed class HealthEndpointsTests(PostgresFixture postgres)
         await using var factory = CreateFactory(UnreachableDatabase);
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/health");
-        var report = await response.Content.ReadFromJsonAsync<HealthResponse>();
+        var response = await client.GetAsync("/health", TestContext.Current.CancellationToken);
+        var report = await response.Content.ReadFromJsonAsync<HealthResponse>(TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         Assert.Equal(HealthEndpoints.Unavailable, report!.Database);
@@ -50,7 +50,7 @@ public sealed class HealthEndpointsTests(PostgresFixture postgres)
         await using var factory = CreateFactory(postgres.ConnectionString);
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync("/health", TestContext.Current.CancellationToken);
 
         Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
     }

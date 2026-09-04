@@ -17,7 +17,7 @@ public sealed class EmbedCommandTests
         using var command = BuildCommandWithUnusableDatabase(new NullEmbeddingGenerator());
 
         var failure = await Assert.ThrowsAsync<EmbeddingsUnavailableException>(
-            () => command.Command.EmbedAsync(vehicleDisplayName: null, CancellationToken.None));
+            () => command.Command.EmbedAsync(vehicleDisplayName: null, TestContext.Current.CancellationToken));
 
         Assert.Equal(EmbeddingsUnavailableException.NoKeyReason, failure.Reason);
     }
@@ -28,7 +28,7 @@ public sealed class EmbedCommandTests
         using var command = BuildCommandWithUnusableDatabase(new NullEmbeddingGenerator());
 
         await Assert.ThrowsAsync<EmbeddingsUnavailableException>(
-            () => command.Command.EmbedAsync("2013 Explorer Sport", CancellationToken.None));
+            () => command.Command.EmbedAsync("2013 Explorer Sport", TestContext.Current.CancellationToken));
     }
 
     [Fact]

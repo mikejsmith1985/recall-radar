@@ -20,7 +20,7 @@ public sealed class VoyageProviderOutageTests
         using var generator = BuildGenerator(new ThrowingHandler(new HttpRequestException("refused")));
 
         var failure = await Assert.ThrowsAsync<EmbeddingProviderUnavailableException>(
-            () => generator.GenerateAsync(["exhaust odor"], options: null, CancellationToken.None));
+            () => generator.GenerateAsync(["exhaust odor"], options: null, TestContext.Current.CancellationToken));
 
         Assert.Contains("mode=sparse", failure.Message, StringComparison.Ordinal);
         Assert.IsType<HttpRequestException>(failure.InnerException);
@@ -32,7 +32,7 @@ public sealed class VoyageProviderOutageTests
         using var generator = BuildGenerator(new ThrowingHandler(new TaskCanceledException("timed out")));
 
         await Assert.ThrowsAsync<EmbeddingProviderUnavailableException>(
-            () => generator.GenerateAsync(["exhaust odor"], options: null, CancellationToken.None));
+            () => generator.GenerateAsync(["exhaust odor"], options: null, TestContext.Current.CancellationToken));
     }
 
     [Theory]
@@ -44,7 +44,7 @@ public sealed class VoyageProviderOutageTests
         using var generator = BuildGenerator(new StatusHandler(status));
 
         var failure = await Assert.ThrowsAsync<EmbeddingProviderUnavailableException>(
-            () => generator.GenerateAsync(["exhaust odor"], options: null, CancellationToken.None));
+            () => generator.GenerateAsync(["exhaust odor"], options: null, TestContext.Current.CancellationToken));
 
         Assert.Contains(((int)status).ToString(), failure.Message, StringComparison.Ordinal);
     }
@@ -55,7 +55,7 @@ public sealed class VoyageProviderOutageTests
         using var generator = BuildGenerator(new StatusHandler(HttpStatusCode.Unauthorized));
 
         await Assert.ThrowsAsync<EmbeddingsUnavailableException>(
-            () => generator.GenerateAsync(["exhaust odor"], options: null, CancellationToken.None));
+            () => generator.GenerateAsync(["exhaust odor"], options: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]

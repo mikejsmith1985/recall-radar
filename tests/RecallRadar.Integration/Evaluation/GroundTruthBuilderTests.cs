@@ -19,12 +19,12 @@ public sealed class GroundTruthBuilderTests(PostgresFixture postgres) : IAsyncLi
     private long _investigationId;
     private long _recallId;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await using var context = postgres.CreateContext();
         var vehicle = Vehicle.Create("FORD", $"GT-{Guid.NewGuid():N}", 2013, $"Ground truth fixture {Guid.NewGuid():N}");
         context.Vehicles.Add(vehicle);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _vehicleId = vehicle.Id;
 
         _investigationId = await SeedAsync(context, SourceKind.Investigation, "PE16003", Component, new DateOnly(2016, 2, 29), "Master cylinder leak investigation.");
@@ -40,10 +40,10 @@ public sealed class GroundTruthBuilderTests(PostgresFixture postgres) : IAsyncLi
         await SeedAsync(context, SourceKind.Complaint, "c-other", OtherComponent, new DateOnly(2016, 4, 1), "The rear hatch rattles.");
 
         context.InvestigationLinks.Add(InvestigationLink.Create(_investigationId, Campaign, Component, Opened, Closed));
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task RelevantDocumentsAreTheInvestigationAndItsCampaignRecall()
@@ -84,15 +84,15 @@ public sealed class GroundTruthBuilderTests(PostgresFixture postgres) : IAsyncLi
         await using var context = postgres.CreateContext();
         var vehicle = Vehicle.Create("FORD", $"NOCAMP-{Guid.NewGuid():N}", 2014, $"No campaign fixture {Guid.NewGuid():N}");
         context.Vehicles.Add(vehicle);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         var investigationId = await SeedAsync(context, SourceKind.Investigation, "PE99999", Component, Opened, "Open investigation.", vehicle.Id);
         await SeedAsync(context, SourceKind.Complaint, "c-orphan", Component, new DateOnly(2016, 3, 1), "Brakes soft.", vehicle.Id);
         context.InvestigationLinks.Add(InvestigationLink.Create(investigationId, "unset", Component, Opened, Closed));
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Proving the rule needs a link whose campaign really is empty, which Create refuses to make,
         // so the check here is that a campaign with no matching recall still yields no recall id.
-        var cases = await new GroundTruthBuilder(context).BuildAsync(vehicle.Id, CancellationToken.None);
+        var cases = await new GroundTruthBuilder(context).BuildAsync(vehicle.Id, TestContext.Current.CancellationToken);
 
         Assert.All(cases, groundTruth => Assert.Single(groundTruth.RelevantDocumentIds));
     }
@@ -112,7 +112,7 @@ public sealed class GroundTruthBuilderTests(PostgresFixture postgres) : IAsyncLi
     public async Task CasesAreScopedToTheVehicleAsked()
     {
         await using var context = postgres.CreateContext();
-        var cases = await new GroundTruthBuilder(context).BuildAsync(_vehicleId, CancellationToken.None);
+        var cases = await new GroundTruthBuilder(context).BuildAsync(_vehicleId, TestContext.Current.CancellationToken);
 
         Assert.NotEmpty(cases);
         Assert.All(cases, groundTruth => Assert.Contains(_investigationId, groundTruth.RelevantDocumentIds));
@@ -133,7 +133,7 @@ public sealed class GroundTruthBuilderTests(PostgresFixture postgres) : IAsyncLi
     private async Task<IReadOnlyList<Domain.Evaluation.GroundTruthCase>> BuildAsync()
     {
         await using var context = postgres.CreateContext();
-        return await new GroundTruthBuilder(context).BuildAsync(_vehicleId, CancellationToken.None);
+        return await new GroundTruthBuilder(context).BuildAsync(_vehicleId, TestContext.Current.CancellationToken);
     }
 
     private async Task<long> SeedAsync(
@@ -145,9 +145,9 @@ public sealed class GroundTruthBuilderTests(PostgresFixture postgres) : IAsyncLi
         var document = SourceDocument.Create(
             kind, externalId, vehicleId ?? _vehicleId, component, filedOn, externalId, body, "{}");
         context.SourceDocuments.Add(document);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         context.DocumentChunks.Add(DocumentChunk.Create(document.Id, 0, body));
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         return document.Id;
     }
 }

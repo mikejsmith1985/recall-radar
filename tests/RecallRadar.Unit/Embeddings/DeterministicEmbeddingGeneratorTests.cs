@@ -16,7 +16,7 @@ public sealed class DeterministicEmbeddingGeneratorTests
     {
         var generator = new DeterministicEmbeddingGenerator();
 
-        var embeddings = await generator.GenerateAsync([ExhaustComplaint, BrakeComplaint], cancellationToken: CancellationToken.None);
+        var embeddings = await generator.GenerateAsync([ExhaustComplaint, BrakeComplaint], cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, embeddings.Count);
         Assert.All(embeddings, embedding => Assert.Equal(DocumentChunk.EmbeddingDimensions, embedding.Vector.Length));
@@ -26,9 +26,9 @@ public sealed class DeterministicEmbeddingGeneratorTests
     public async Task GenerateAsync_GivesTheSameTextTheSameVectorEveryTime()
     {
         var firstRun = await new DeterministicEmbeddingGenerator()
-            .GenerateAsync([ExhaustComplaint], cancellationToken: CancellationToken.None);
+            .GenerateAsync([ExhaustComplaint], cancellationToken: TestContext.Current.CancellationToken);
         var secondRun = await new DeterministicEmbeddingGenerator()
-            .GenerateAsync([ExhaustComplaint], cancellationToken: CancellationToken.None);
+            .GenerateAsync([ExhaustComplaint], cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(firstRun[0].Vector.ToArray(), secondRun[0].Vector.ToArray());
     }
@@ -37,7 +37,7 @@ public sealed class DeterministicEmbeddingGeneratorTests
     public async Task GenerateAsync_GivesDifferentTextDifferentVectors()
     {
         var embeddings = await new DeterministicEmbeddingGenerator()
-            .GenerateAsync([ExhaustComplaint, BrakeComplaint], cancellationToken: CancellationToken.None);
+            .GenerateAsync([ExhaustComplaint, BrakeComplaint], cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotEqual(embeddings[0].Vector.ToArray(), embeddings[1].Vector.ToArray());
     }
@@ -46,7 +46,7 @@ public sealed class DeterministicEmbeddingGeneratorTests
     public async Task GenerateAsync_ProducesUnitVectorsSoCosineDistanceBehaves()
     {
         var embeddings = await new DeterministicEmbeddingGenerator()
-            .GenerateAsync([ExhaustComplaint, BrakeComplaint], cancellationToken: CancellationToken.None);
+            .GenerateAsync([ExhaustComplaint, BrakeComplaint], cancellationToken: TestContext.Current.CancellationToken);
 
         foreach (var embedding in embeddings)
         {
@@ -59,7 +59,7 @@ public sealed class DeterministicEmbeddingGeneratorTests
     public async Task GenerateAsync_AcceptsAnEmptyBatchWithoutComplaint()
     {
         var embeddings = await new DeterministicEmbeddingGenerator()
-            .GenerateAsync([], cancellationToken: CancellationToken.None);
+            .GenerateAsync([], cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(embeddings);
     }

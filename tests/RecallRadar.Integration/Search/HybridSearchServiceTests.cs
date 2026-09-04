@@ -18,13 +18,13 @@ public sealed class HybridSearchServiceTests(PostgresFixture postgres) : IAsyncL
     private int _otherVehicleId;
     private readonly Dictionary<string, long> _documentIdsByExternalId = [];
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await using var context = postgres.CreateContext();
         var vehicle = Vehicle.Create("FORD", $"SEARCHTEST-{Guid.NewGuid():N}", 2013, $"Search fixture {Guid.NewGuid():N}");
         var otherVehicle = Vehicle.Create("FORD", $"OTHER-{Guid.NewGuid():N}", 2014, $"Other fixture {Guid.NewGuid():N}");
         context.Vehicles.AddRange(vehicle, otherVehicle);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _vehicleId = vehicle.Id;
         _otherVehicleId = otherVehicle.Id;
 
@@ -38,7 +38,7 @@ public sealed class HybridSearchServiceTests(PostgresFixture postgres) : IAsyncL
             "Exhaust odor cabin complaint belonging to a different truck.", _otherVehicleId);
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task Sparse_FindsKeywordMatchesAndNeverCrossesVehicles()
@@ -121,7 +121,7 @@ public sealed class HybridSearchServiceTests(PostgresFixture postgres) : IAsyncL
         await using var context = postgres.CreateContext();
         var bare = Vehicle.Create("FORD", $"BARE-{Guid.NewGuid():N}", 2015, $"Bare fixture {Guid.NewGuid():N}");
         context.Vehicles.Add(bare);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         await SeedAsync(context, "unembedded", ExhaustComponent, new DateOnly(2015, 1, 1),
             "Exhaust odor with no embedding stored.", bare.Id, withEmbedding: false);
 
@@ -129,7 +129,7 @@ public sealed class HybridSearchServiceTests(PostgresFixture postgres) : IAsyncL
         SearchRequest.TryCreate(bare.Id, ExhaustQuery, "dense", null, null, null, null, out var request, out _);
 
         await Assert.ThrowsAsync<EmbeddingsUnavailableException>(
-            () => service.SearchAsync(request!, CancellationToken.None));
+            () => service.SearchAsync(request!, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public sealed class HybridSearchServiceTests(PostgresFixture postgres) : IAsyncL
         SearchRequest.TryCreate(-1, ExhaustQuery, "sparse", null, null, null, null, out var request, out _);
 
         await Assert.ThrowsAsync<VehicleNotFoundException>(
-            () => service.SearchAsync(request!, CancellationToken.None));
+            () => service.SearchAsync(request!, TestContext.Current.CancellationToken));
     }
 
     private async Task<IReadOnlyList<SearchHit>> SearchAsync(
@@ -151,7 +151,7 @@ public sealed class HybridSearchServiceTests(PostgresFixture postgres) : IAsyncL
         SearchRequest.TryCreate(
             _vehicleId, query, mode.ToString(), component, filedFrom, filedTo, limit, out var request, out var problem);
         Assert.Null(problem);
-        return await BuildService(context).SearchAsync(request!, CancellationToken.None);
+        return await BuildService(context).SearchAsync(request!, TestContext.Current.CancellationToken);
     }
 
     private static HybridSearchService BuildService(RecallRadarDbContext context) =>
@@ -164,18 +164,18 @@ public sealed class HybridSearchServiceTests(PostgresFixture postgres) : IAsyncL
         var document = SourceDocument.Create(
             SourceKind.Complaint, externalId, vehicleId ?? _vehicleId, component, filedOn, externalId, body, "{}");
         context.SourceDocuments.Add(document);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _documentIdsByExternalId[externalId] = document.Id;
 
         var chunk = DocumentChunk.Create(document.Id, 0, body);
         if (withEmbedding)
         {
             var generated = await new DeterministicEmbeddingGenerator()
-                .GenerateAsync([body], options: null, CancellationToken.None);
+                .GenerateAsync([body], options: null, TestContext.Current.CancellationToken);
             chunk.SetEmbedding(new Pgvector.Vector(generated[0].Vector));
         }
 
         context.DocumentChunks.Add(chunk);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 }

@@ -19,7 +19,7 @@ public sealed class ProgramTests(PostgresFixture postgres)
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync("/health", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -30,7 +30,7 @@ public sealed class ProgramTests(PostgresFixture postgres)
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/api/nothing-here");
+        var response = await client.GetAsync("/api/nothing-here", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -42,7 +42,7 @@ public sealed class ProgramTests(PostgresFixture postgres)
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/api/search?vehicleId=-1&q=exhaust&mode=sparse");
+        var response = await client.GetAsync("/api/search?vehicleId=-1&q=exhaust&mode=sparse", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

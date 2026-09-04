@@ -15,7 +15,7 @@ public sealed class NhtsaFlatFileClientTests : IDisposable
         var client = new NhtsaFlatFileClient(httpClient);
         var explorer = new VehicleRegistration { Make = "FORD", NhtsaModel = "EXPLORER", ModelYear = NhtsaFixtureServer.FixtureModelYear, DisplayName = "2012 Explorer (fixture)" };
 
-        var archive = await client.DownloadAsync(new Uri(_nhtsa.FlatFileUrl), CancellationToken.None);
+        var archive = await client.DownloadAsync(new Uri(_nhtsa.FlatFileUrl), TestContext.Current.CancellationToken);
         var rows = InvestigationFlatFileParser.ParseZip(archive, [explorer]);
 
         Assert.Equal(3, rows.Count);
@@ -28,7 +28,7 @@ public sealed class NhtsaFlatFileClientTests : IDisposable
         using var httpClient = new HttpClient();
         var client = new NhtsaFlatFileClient(httpClient);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => client.DownloadAsync(new Uri("inv/FLAT_INV.zip", UriKind.Relative), CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.DownloadAsync(new Uri("inv/FLAT_INV.zip", UriKind.Relative), TestContext.Current.CancellationToken));
     }
 
     public void Dispose() => _nhtsa.Dispose();

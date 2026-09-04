@@ -23,19 +23,19 @@ public sealed class AnswerServiceTests(PostgresFixture postgres) : IAsyncLifetim
     private long _complaintId;
     private long _investigationId;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await using var context = postgres.CreateContext();
         var vehicle = Vehicle.Create("FORD", $"ANSWER-{Guid.NewGuid():N}", 2013, $"Answer fixture {Guid.NewGuid():N}");
         context.Vehicles.Add(vehicle);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _vehicleId = vehicle.Id;
 
         _complaintId = await SeedAsync(context, SourceKind.Complaint, "complaint-1", ComplaintBody);
         _investigationId = await SeedAsync(context, SourceKind.Investigation, "EA17002", InvestigationBody);
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task AVerifiableQuoteSurvivesAndTheAnswerIsGrounded()
@@ -149,7 +149,7 @@ public sealed class AnswerServiceTests(PostgresFixture postgres) : IAsyncLifetim
         var outcome = await AskAsync(model);
 
         await using var context = postgres.CreateContext();
-        var stored = await context.Answers.AsNoTracking().SingleAsync(row => row.Id == outcome.AnswerId);
+        var stored = await context.Answers.AsNoTracking().SingleAsync(row => row.Id == outcome.AnswerId, TestContext.Current.CancellationToken);
         Assert.Equal(1, stored.VerifiedCitationCount);
         Assert.Equal(1, stored.DroppedCitationCount);
         Assert.True(stored.IsGrounded);
@@ -165,7 +165,7 @@ public sealed class AnswerServiceTests(PostgresFixture postgres) : IAsyncLifetim
         var service = BuildService(context, model);
 
         await Assert.ThrowsAsync<VehicleNotFoundException>(
-            () => service.AskAsync(-1, Question, RetrievalMode.Sparse, CancellationToken.None));
+            () => service.AskAsync(-1, Question, RetrievalMode.Sparse, TestContext.Current.CancellationToken));
         Assert.Equal(0, model.CallCount);
     }
 
@@ -178,7 +178,7 @@ public sealed class AnswerServiceTests(PostgresFixture postgres) : IAsyncLifetim
 
         await using var context = postgres.CreateContext();
         var outcome = await BuildService(context, model, new NullEmbeddingGenerator())
-            .AskAsync(_vehicleId, Question, RetrievalMode.Hybrid, CancellationToken.None);
+            .AskAsync(_vehicleId, Question, RetrievalMode.Hybrid, TestContext.Current.CancellationToken);
 
         Assert.True(outcome.Answer.IsGrounded);
         Assert.Equal(1, model.CallCount);
@@ -187,7 +187,7 @@ public sealed class AnswerServiceTests(PostgresFixture postgres) : IAsyncLifetim
     private async Task<AnswerOutcome> AskAsync(RecordedAnswerModel model)
     {
         await using var context = postgres.CreateContext();
-        return await BuildService(context, model).AskAsync(_vehicleId, Question, RetrievalMode.Sparse, CancellationToken.None);
+        return await BuildService(context, model).AskAsync(_vehicleId, Question, RetrievalMode.Sparse, TestContext.Current.CancellationToken);
     }
 
     private static AnswerService BuildService(
@@ -199,9 +199,9 @@ public sealed class AnswerServiceTests(PostgresFixture postgres) : IAsyncLifetim
         var document = SourceDocument.Create(
             kind, $"{externalId}-{Guid.NewGuid():N}", _vehicleId, Component, new DateOnly(2016, 5, 1), externalId, body, "{}");
         context.SourceDocuments.Add(document);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         context.DocumentChunks.Add(DocumentChunk.Create(document.Id, 0, body));
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         return document.Id;
     }
 }

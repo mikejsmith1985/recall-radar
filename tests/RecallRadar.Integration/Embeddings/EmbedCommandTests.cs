@@ -26,7 +26,7 @@ public sealed class EmbedCommandTests(PostgresFixture postgres)
         await using var readContext = postgres.CreateContext();
         var stored = await readContext.DocumentChunks
             .Where(chunk => chunk.Document!.VehicleId == vehicleId)
-            .ToListAsync(CancellationToken.None);
+            .ToListAsync(TestContext.Current.CancellationToken);
         Assert.All(stored, chunk =>
         {
             Assert.NotNull(chunk.Embedding);
@@ -57,7 +57,7 @@ public sealed class EmbedCommandTests(PostgresFixture postgres)
         await using var readContext = postgres.CreateContext();
         var untouched = await readContext.DocumentChunks
             .Where(chunk => chunk.Document!.VehicleId == untouchedVehicleId)
-            .ToListAsync(CancellationToken.None);
+            .ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(4, untouched.Count);
         Assert.All(untouched, chunk => Assert.Null(chunk.Embedding));
     }
@@ -71,7 +71,7 @@ public sealed class EmbedCommandTests(PostgresFixture postgres)
         var command = new EmbedCommand(database, generator, NullLogger<EmbedCommand>.Instance);
 
         var failure = await Assert.ThrowsAsync<EmbeddingsUnavailableException>(
-            () => command.EmbedAsync($"{ExplorerName} no key", CancellationToken.None));
+            () => command.EmbedAsync($"{ExplorerName} no key", TestContext.Current.CancellationToken));
 
         Assert.Equal(EmbeddingsUnavailableException.NoKeyReason, failure.Reason);
     }
@@ -93,7 +93,7 @@ public sealed class EmbedCommandTests(PostgresFixture postgres)
         await using var database = postgres.CreateContext();
         using var generator = new DeterministicEmbeddingGenerator();
         var command = new EmbedCommand(database, generator, NullLogger<EmbedCommand>.Instance);
-        return await command.EmbedAsync(vehicleDisplayName, CancellationToken.None);
+        return await command.EmbedAsync(vehicleDisplayName, TestContext.Current.CancellationToken);
     }
 
     /// <summary>
@@ -107,20 +107,20 @@ public sealed class EmbedCommandTests(PostgresFixture postgres)
         var uniqueModel = $"{nhtsaModel}-EMBED-{modelYear}";
         var vehicle = Vehicle.Create("FORD", uniqueModel, modelYear, displayName);
         context.Vehicles.Add(vehicle);
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var document = SourceDocument.Create(
             SourceKind.Complaint, $"embed-{displayName}", vehicle.Id, "STRUCTURE",
             new DateOnly(2020, 1, 1), "Complaint", "Exhaust odor enters the cabin.", "{}");
         context.SourceDocuments.Add(document);
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         for (var ordinal = 0; ordinal < chunkCount; ordinal++)
         {
             context.DocumentChunks.Add(DocumentChunk.Create(document.Id, ordinal, $"{displayName} passage {ordinal}"));
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         return vehicle.Id;
     }
 }

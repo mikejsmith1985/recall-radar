@@ -30,11 +30,12 @@ public sealed class NoCredentialLeakTests(PostgresFixture postgres)
 
         var bodies = new List<string>
         {
-            await Read(await client.GetAsync("/health")),
-            await Read(await client.GetAsync($"/api/search?vehicleId=1&q=exhaust&mode=dense")),
-            await Read(await client.PostAsJsonAsync("/api/ask", new AskRequest(1, "exhaust smell?", null))),
-            await Read(await client.GetAsync("/api/documents/1")),
-            await Read(await client.GetAsync("/api/vehicles")),
+            await Read(await client.GetAsync("/health", TestContext.Current.CancellationToken)),
+            await Read(await client.GetAsync($"/api/search?vehicleId=1&q=exhaust&mode=dense", TestContext.Current.CancellationToken)),
+            await Read(await client.PostAsJsonAsync(
+                "/api/ask", new AskRequest(1, "exhaust smell?", null), TestContext.Current.CancellationToken)),
+            await Read(await client.GetAsync("/api/documents/1", TestContext.Current.CancellationToken)),
+            await Read(await client.GetAsync("/api/vehicles", TestContext.Current.CancellationToken)),
         };
 
         foreach (var body in bodies)
@@ -54,14 +55,14 @@ public sealed class NoCredentialLeakTests(PostgresFixture postgres)
         var log = new CapturingLoggerProvider();
         using var client = CreateClient(log);
 
-        var body = await Read(await client.GetAsync("/health"));
+        var body = await Read(await client.GetAsync("/health", TestContext.Current.CancellationToken));
 
         // Capability is reported; the values are not.
         Assert.Contains("\"answering\":\"ok\"", body, StringComparison.Ordinal);
         Assert.DoesNotContain(FakeAnthropicKey, body, StringComparison.Ordinal);
     }
 
-    private static async Task<string> Read(HttpResponseMessage response) => await response.Content.ReadAsStringAsync();
+    private static async Task<string> Read(HttpResponseMessage response) => await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
     private HttpClient CreateClient(CapturingLoggerProvider log) =>
         new WebApplicationFactory<Program>()

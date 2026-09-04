@@ -69,6 +69,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cannot come from an empty database.
 
 ### Changed
+- The test suites run on xunit v3 and Microsoft.Testing.Platform. Each test project is now its own
+  executable that hosts the platform directly, so the separate `testhost.exe` process is gone
+  entirely. On Windows that process opened a listening socket and prompted the developer through
+  the firewall every time its path changed, which was once per git worktree. The stub HTTP server
+  the ingest tests use now binds to loopback rather than every interface, for the same reason.
+- Tests pass the run's own cancellation token to every asynchronous call, so cancelling a run stops
+  it promptly instead of waiting on database and HTTP calls that were never told to stop.
 - The database connection string and the local Postgres password no longer live in source or
   compose. They come from a gitignored `.env` (template in `.env.example`) or the environment,
   and the app, `dotnet ef` and compose all fail with a pointed message when they are missing.

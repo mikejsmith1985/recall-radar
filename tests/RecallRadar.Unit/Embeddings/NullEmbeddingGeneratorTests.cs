@@ -12,7 +12,7 @@ public sealed class NullEmbeddingGeneratorTests
         using var generator = new NullEmbeddingGenerator();
 
         var failure = await Assert.ThrowsAsync<EmbeddingsUnavailableException>(
-            () => generator.GenerateAsync(["text"], cancellationToken: CancellationToken.None));
+            () => generator.GenerateAsync(["text"], cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Equal(EmbeddingsUnavailableException.NoKeyReason, failure.Reason);
     }
@@ -23,7 +23,7 @@ public sealed class NullEmbeddingGeneratorTests
         using var generator = new NullEmbeddingGenerator();
 
         await Assert.ThrowsAsync<EmbeddingsUnavailableException>(
-            () => generator.GenerateAsync([], cancellationToken: CancellationToken.None));
+            () => generator.GenerateAsync([], cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]

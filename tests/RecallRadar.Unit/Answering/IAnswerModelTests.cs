@@ -38,7 +38,7 @@ public sealed class IAnswerModelTests
         // The seam exists so the answer path is testable and a live call is never made by accident.
         IAnswerModel model = new StubModel();
 
-        var reply = await model.AskAsync("2013 Explorer Sport", "exhaust?", [], CancellationToken.None);
+        var reply = await model.AskAsync("2013 Explorer Sport", "exhaust?", [], TestContext.Current.CancellationToken);
 
         Assert.Equal("""{"answer": "stub"}""", reply.Json);
     }
