@@ -124,10 +124,38 @@ public sealed class EvaluationRunner(
     }
 
     /// <summary>Serialises the modes for storage and for the endpoint, in one stable shape.</summary>
+    /// <remarks>
+    /// Each mode maps straight to its numbers, or to null when it did not run, and the reasons live
+    /// beside them under <c>skipped</c>. A wrapper object per mode would make every reader unwrap
+    /// before it could read a number, and a client that forgot would silently render nothing.
+    /// </remarks>
     public static string Serialise(EvaluationResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
-        return JsonSerializer.Serialize(
-            result.Modes.ToDictionary(mode => mode.Mode, mode => (object?)mode), MetricsJsonOptions);
+
+        var payload = new Dictionary<string, object?>(StringComparer.Ordinal);
+        foreach (var mode in result.Modes)
+        {
+            payload[mode.Mode] = mode.Metrics is { } metrics
+                ? new Dictionary<string, object>(StringComparer.Ordinal)
+                {
+                    ["recallAt5"] = metrics.RecallAt5,
+                    ["recallAt10"] = metrics.RecallAt10,
+                    ["mrr"] = metrics.MeanReciprocalRank,
+                    ["scoredCaseCount"] = metrics.ScoredCaseCount,
+                    ["skippedCaseCount"] = metrics.SkippedCaseCount,
+                }
+                : null;
+        }
+
+        var skipped = result.Modes
+            .Where(mode => mode.SkippedReason is not null)
+            .ToDictionary(mode => mode.Mode, mode => mode.SkippedReason!, StringComparer.Ordinal);
+        if (skipped.Count > 0)
+        {
+            payload["skipped"] = skipped;
+        }
+
+        return JsonSerializer.Serialize(payload, MetricsJsonOptions);
     }
 }

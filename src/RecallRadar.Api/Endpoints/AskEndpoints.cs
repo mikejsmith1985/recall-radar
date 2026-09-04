@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecallRadar.Api.Answering;
-using RecallRadar.Api.Config;
 using RecallRadar.Domain.Retrieval;
 using RecallRadar.Retrieval.Persistence;
 using RecallRadar.Retrieval.Search;
@@ -34,13 +33,14 @@ public static class AskEndpoints
     private static async Task<IResult> AskAsync(
         AskRequest request,
         [FromServices] IServiceProvider services,
-        [FromServices] AppSettings settings,
         CancellationToken cancellationToken)
     {
-        // Resolved rather than injected: the service is only registered when a key exists, and a
-        // nullable constructor parameter would be read as a second request body.
+        // Resolved rather than injected: the service is only registered when answering is possible,
+        // and a nullable constructor parameter would be read as a second request body. Registration
+        // is the authority, not the key: the browser-suite environment registers a scripted model
+        // and has no key at all.
         var answers = services.GetService<AnswerService>();
-        if (answers is null || !settings.HasAnthropicKey)
+        if (answers is null)
         {
             return Results.Problem(
                 detail: NoAnsweringKeyDetail, statusCode: StatusCodes.Status503ServiceUnavailable, title: NoAnsweringKeyTitle);

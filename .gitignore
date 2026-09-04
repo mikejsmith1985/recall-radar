@@ -7,6 +7,7 @@ obj/
 # Node / Vite / Cypress
 node_modules/
 web/dist/
+src/RecallRadar.Api/wwwroot/
 tests/ux/videos/
 tests/ux/screenshots/
 

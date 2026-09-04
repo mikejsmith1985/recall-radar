@@ -14,7 +14,9 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "dist",
+    // Built into the API's wwwroot so the client is served from the same origin as the API it
+    // calls. A browser test then navigates to "/" and needs no proxy or cross-origin allowance.
+    outDir: "../src/RecallRadar.Api/wwwroot",
     emptyOutDir: true,
   },
   test: {
