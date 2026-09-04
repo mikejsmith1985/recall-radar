@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A grounded answer to a symptom question. Retrieved records go to Claude with a schema that makes
+  citations data rather than prose, and every quote is then checked character for character against
+  the record it names. Quotes that fail are dropped and reported with the reason. An answer whose
+  citations all fail is returned as not grounded, and the model's prose is discarded with them:
+  text that reads as an answer will be read as one whatever flag sits beside it.
+- `POST /api/ask` returns the answer, its verified citations with offsets into the record, the
+  dropped ones with reasons, and any recall campaigns named. `GET /api/documents/{id}` returns a
+  record verbatim so a quote can be highlighted inside it. Answering is registered only when a key
+  exists, so without one the endpoint answers 503 and says search still works.
 - An `embed` command back-fills embeddings for chunks that have none, in batches, saving each batch
   so a partial run resumes. Without a Voyage key it exits with `error: VOYAGE_API_KEY not set`
   rather than pretending to work.
@@ -57,6 +66,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   password, but a password in a repository is a habit worth not having.
 
 ### Fixed
+- A question now matches records. Keyword search joined every word of the query with AND, so a
+  real question ("I get a strong exhaust smell inside the cabin when I accelerate") matched nothing
+  at all, while a three-word phrase happened to work. Terms are now joined with OR and ranked by
+  coverage, which is what asking a question should do.
+- A citation naming "RECORD 1886" is read as record 1886. The prompt heads each record with that
+  label and the model reasonably echoed it, which discarded nine genuine citations in a live run.
+  The quote itself is still checked character for character; only the prompt's own label is forgiven.
 - A search that needs embeddings no longer returns 500 when the embedding provider is unreachable
   or erroring. The provider being down is a temporary, reportable state, distinct from having no
   key configured: the first answers 503 and the second 409, and both name keyword search as the

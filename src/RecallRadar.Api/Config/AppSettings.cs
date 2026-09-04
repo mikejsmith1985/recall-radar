@@ -31,15 +31,38 @@ public sealed class AppSettings
     public static AppSettings Load(string? configuredConnectionString, Func<string, string?> readEnvironment)
     {
         ArgumentNullException.ThrowIfNull(readEnvironment);
+        return Load(configuredConnectionString, readEnvironment, _ => null);
+    }
+
+    /// <summary>
+    /// Reads settings from the environment, falling back to configuration for anything unset.
+    /// </summary>
+    /// <remarks>
+    /// Both sources are consulted because the rest of the application reads configuration, and
+    /// health reports what is available from these settings. If the two disagreed, health could
+    /// say a feature is unavailable while the service behind it was registered and working.
+    /// </remarks>
+    public static AppSettings Load(
+        string? configuredConnectionString, Func<string, string?> readEnvironment, Func<string, string?> readConfiguration)
+    {
+        ArgumentNullException.ThrowIfNull(readEnvironment);
+        ArgumentNullException.ThrowIfNull(readConfiguration);
+
         var environmentConnection = readEnvironment(RecallRadarDbContextFactory.ConnectionEnvironmentVariable);
         return new AppSettings
         {
             ConnectionString = string.IsNullOrWhiteSpace(environmentConnection)
                 ? configuredConnectionString ?? string.Empty
                 : environmentConnection,
-            AnthropicApiKey = readEnvironment(AnthropicKeyVariable),
-            VoyageApiKey = readEnvironment(VoyageKeyVariable),
+            AnthropicApiKey = FirstSet(AnthropicKeyVariable, readEnvironment, readConfiguration),
+            VoyageApiKey = FirstSet(VoyageKeyVariable, readEnvironment, readConfiguration),
         };
+    }
+
+    private static string? FirstSet(string name, Func<string, string?> readEnvironment, Func<string, string?> readConfiguration)
+    {
+        var fromEnvironment = readEnvironment(name);
+        return string.IsNullOrWhiteSpace(fromEnvironment) ? readConfiguration(name) : fromEnvironment;
     }
 
     /// <summary>Renders capability flags only. Key material and the connection string are never included.</summary>
