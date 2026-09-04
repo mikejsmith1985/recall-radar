@@ -22,20 +22,36 @@ public sealed record GroundedAnswer(
     /// <summary>Shown in place of the model's claim when nothing could be verified (FR-010).</summary>
     public const string NotGroundedLabel = "not grounded";
 
+    /// <summary>Replaces prose that no surviving evidence supports.</summary>
+    public const string NoEvidenceSurvivedExplanation =
+        "The answer to this question could not be supported. Every quote offered as evidence failed to " +
+        "match the record it named, so none of it is shown. The records themselves are still searchable.";
+
     /// <summary>
-    /// Builds the answer from the check. A known-pattern claim with no surviving evidence is downgraded
-    /// to false, because a pattern the sources do not support is not known, it is asserted.
+    /// Builds the answer from the check.
     /// </summary>
+    /// <remarks>
+    /// When nothing verified, the model's prose is discarded rather than returned beside an empty
+    /// citation list. Text that reads as an answer will be read as one whatever flag sits next to
+    /// it, and an unsupported claim about a car's safety is the one thing this must not emit.
+    /// A known-pattern claim is likewise downgraded: a pattern the records do not support is not
+    /// known, it is asserted.
+    /// </remarks>
     public static GroundedAnswer From(string answerText, bool isKnownPattern, CitationCheck check, IReadOnlyList<string> linkedCampaigns)
     {
         ArgumentNullException.ThrowIfNull(answerText);
         ArgumentNullException.ThrowIfNull(check);
         ArgumentNullException.ThrowIfNull(linkedCampaigns);
 
+        if (!check.IsGrounded)
+        {
+            return new GroundedAnswer(NoEvidenceSurvivedExplanation, false, false, [], check.DroppedCount, []);
+        }
+
         return new GroundedAnswer(
             answerText,
-            isKnownPattern && check.IsGrounded,
-            check.IsGrounded,
+            isKnownPattern,
+            true,
             check.Verified,
             check.DroppedCount,
             linkedCampaigns);

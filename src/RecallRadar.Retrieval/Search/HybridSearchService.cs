@@ -67,15 +67,24 @@ public sealed class HybridSearchService(
     /// embedding key at all, which is why it is the mode available today.
     /// </summary>
     private async Task<IReadOnlyList<long>> FindSparseCandidatesAsync(
-        SearchRequest request, CancellationToken cancellationToken) =>
-        await ApplyFilters(database.DocumentChunks.AsNoTracking(), request)
-            .Where(chunk => chunk.SearchText!.Matches(EF.Functions.WebSearchToTsQuery(FullTextLanguage, request.Query)))
-            .OrderByDescending(chunk =>
-                chunk.SearchText!.RankCoverDensity(EF.Functions.WebSearchToTsQuery(FullTextLanguage, request.Query)))
+        SearchRequest request, CancellationToken cancellationToken)
+    {
+        // The question is turned into an OR of its terms. Joining with AND, which is what a bare
+        // phrase does, means a whole question matches nothing at all.
+        var query = KeywordQuery.BuildAnyTermQuery(request.Query);
+        if (query is null)
+        {
+            return [];
+        }
+
+        return await ApplyFilters(database.DocumentChunks.AsNoTracking(), request)
+            .Where(chunk => chunk.SearchText!.Matches(EF.Functions.ToTsQuery(FullTextLanguage, query)))
+            .OrderByDescending(chunk => chunk.SearchText!.RankCoverDensity(EF.Functions.ToTsQuery(FullTextLanguage, query)))
             .ThenBy(chunk => chunk.Id)
             .Select(chunk => chunk.Id)
             .Take(SearchRequest.CandidateWindow)
             .ToListAsync(cancellationToken);
+    }
 
     /// <summary>
     /// Meaning candidates, ordered by cosine distance from the embedded query. Throws rather than
