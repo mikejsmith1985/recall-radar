@@ -1,0 +1,27 @@
+{
+  "ranAt": "2026-09-04T11:49:25.1220474+00:00",
+  "caseCount": 80,
+  "modes": [
+    {
+      "mode": "sparse",
+      "metrics": {
+        "recallAt5": 0.075,
+        "recallAt10": 0.125,
+        "meanReciprocalRank": 0.05666666666666668,
+        "scoredCaseCount": 80,
+        "skippedCaseCount": 0
+      },
+      "skippedReason": null
+    },
+    {
+      "mode": "dense",
+      "metrics": null,
+      "skippedReason": "No chunk for this vehicle has an embedding yet. Run the embed command, or search with mode=sparse."
+    },
+    {
+      "mode": "hybrid",
+      "metrics": null,
+      "skippedReason": "No chunk for this vehicle has an embedding yet. Run the embed command, or search with mode=sparse."
+    }
+  ]
+}

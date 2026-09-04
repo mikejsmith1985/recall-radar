@@ -4,6 +4,7 @@ using RecallRadar.Api.Answering;
 using RecallRadar.Api.Config;
 using RecallRadar.Api.Endpoints;
 using RecallRadar.Retrieval.Embeddings;
+using RecallRadar.Retrieval.Evaluation;
 using RecallRadar.Retrieval.Persistence;
 using RecallRadar.Retrieval.Search;
 
@@ -21,6 +22,9 @@ builder.Services.AddDbContext<RecallRadarDbContext>(options =>
 // search endpoint answer 409 for the modes needing embeddings while keyword search keeps working.
 builder.Services.AddEmbeddingGenerator(builder.Configuration);
 builder.Services.AddScoped<HybridSearchService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<GroundTruthBuilder>();
+builder.Services.AddScoped<EvaluationRunner>();
 
 // Answering is registered only when a key exists, so the ask endpoint can answer 503 by finding no
 // service rather than by failing partway through a request that was never going to work.
@@ -36,6 +40,7 @@ var app = builder.Build();
 app.MapHealthEndpoint();
 app.MapSearchEndpoints();
 app.MapAskEndpoints();
+app.MapEvalEndpoints();
 
 app.Run();
 
