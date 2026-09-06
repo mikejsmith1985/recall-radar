@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A second retrieval pool. `scope=campaigns` on `/api/search` ranks recalls and investigations
+  alone, because a vehicle has thousands of complaints and a few dozen official records, and ranking
+  them together hands every place to complaints. Measured on the loaded corpus, this takes recall@10
+  from 0.125 to 0.400 and dense retrieval from 0.000 to 0.400 — same questions, same code, only the
+  pool changed. A misspelled scope is a 400, never a silent fall back to searching everything.
+- An answer now retrieves from both pools: the wider one for evidence, the campaign pool for the
+  recalls and investigations panel. `POST /api/ask` returns those as `campaignMatches`, and the
+  panel labels anything the answer did not quote as unverified. A retrieved record is a lead worth
+  reading; a citation is a claim that survived checking. Collapsing the two would let the first
+  borrow the credibility of the second.
+- The evaluation scores every mode in both pools over identical cases, and the page shows the two
+  side by side, because the gap between them is the finding. `eval/results.json` now names each
+  entry's pool and carries a unique key per pool and mode, so a file read a year later is not
+  ambiguous between two rows both labelled "sparse".
 - The browser suite runs. A `UxFixture` environment seeds a throwaway database with the states the
   specs have to tell apart, and answers come from a scripted model rather than Claude, so a run
   costs nothing, finishes in seconds, and asserts the same thing every time. The scripted reply
@@ -25,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GET /api/eval` returns the latest run and the runs behind it, with metrics handed back in the
   shape they were stored so an older run keeps its own fields. Before any run it returns null
   rather than a table of zeroes, which would read as a result.
-- A README carrying the measured numbers, including what they do not measure.
+- A README carrying the measured numbers, including what they do not measure, and why adding
+  embeddings made the evaluation worse before a second pool made it better.
 - A grounded answer to a symptom question. Retrieved records go to Claude with a schema that makes
   citations data rather than prose, and every quote is then checked character for character against
   the record it names. Quotes that fail are dropped and reported with the reason. An answer whose

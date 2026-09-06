@@ -10,6 +10,9 @@ web/dist/
 src/RecallRadar.Api/wwwroot/
 tests/ux/videos/
 tests/ux/screenshots/
+# Cypress writes failure screenshots under its own config folder, not the ones above.
+tests/ux/cypress/screenshots/
+tests/ux/cypress/videos/
 
 # Runtime and local state
 *.pid

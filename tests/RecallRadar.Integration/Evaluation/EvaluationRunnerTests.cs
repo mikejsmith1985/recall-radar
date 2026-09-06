@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.EntityFrameworkCore;
 using RecallRadar.Retrieval.Embeddings;
+using RecallRadar.Domain.Retrieval;
 using RecallRadar.Retrieval.Evaluation;
 using RecallRadar.Retrieval.Persistence;
 using RecallRadar.Retrieval.Search;
@@ -51,7 +52,9 @@ public sealed class EvaluationRunnerTests(PostgresFixture postgres) : IAsyncLife
         var result = await RunAsync();
 
         Assert.Equal(6, result.CaseCount);
-        Assert.Equal(["sparse", "dense", "hybrid"], result.Modes.Select(mode => mode.Mode));
+        Assert.Equal(
+            ["sparse", "dense", "hybrid", "campaignsSparse", "campaignsDense", "campaignsHybrid"],
+            result.Modes.Select(mode => mode.Key));
         Assert.All(result.Modes, mode => Assert.True(mode.WasScored));
     }
 
@@ -62,7 +65,7 @@ public sealed class EvaluationRunnerTests(PostgresFixture postgres) : IAsyncLife
         // must surface it. A zero here would mean the retrieval is not doing its job at all.
         var result = await RunAsync();
 
-        var sparse = result.Modes.Single(mode => mode.Mode == "sparse");
+        var sparse = ModeIn(result, RetrievalScope.All, "sparse");
         Assert.True(sparse.Metrics!.RecallAt10 > 0);
         Assert.True(sparse.Metrics.MeanReciprocalRank > 0);
         Assert.Equal(6, sparse.Metrics.ScoredCaseCount);
@@ -100,8 +103,8 @@ public sealed class EvaluationRunnerTests(PostgresFixture postgres) : IAsyncLife
         // Zero would read as "hybrid is bad" when it means "hybrid was never tried".
         var result = await RunAsync(new NullEmbeddingGenerator());
 
-        var sparse = result.Modes.Single(mode => mode.Mode == "sparse");
-        var dense = result.Modes.Single(mode => mode.Mode == "dense");
+        var sparse = ModeIn(result, RetrievalScope.All, "sparse");
+        var dense = ModeIn(result, RetrievalScope.All, "dense");
         Assert.True(sparse.WasScored);
         Assert.False(dense.WasScored);
         Assert.NotNull(dense.SkippedReason);
@@ -122,6 +125,56 @@ public sealed class EvaluationRunnerTests(PostgresFixture postgres) : IAsyncLife
         Assert.All(result.Modes, mode => Assert.False(mode.WasScored));
         Assert.All(result.Modes, mode => Assert.Contains("ground-truth", mode.SkippedReason!, StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public async Task EveryModeIsScoredInBothPools()
+    {
+        // Six rows, not three: the comparison between the pools is the measurement.
+        var result = await RunAsync();
+
+        foreach (var scope in new[] { RetrievalScope.All, RetrievalScope.Campaigns })
+        {
+            foreach (var mode in new[] { "sparse", "dense", "hybrid" })
+            {
+                Assert.NotNull(ModeIn(result, scope, mode));
+            }
+        }
+    }
+
+    [Fact]
+    public async Task TheCampaignPoolFindsTheInvestigationTheWiderPoolCanBury()
+    {
+        // The whole reason the pool exists. Complaints outnumber campaigns by orders of
+        // magnitude, so ranking them together hides the record the question is really about.
+        var result = await RunAsync();
+
+        var wide = ModeIn(result, RetrievalScope.All, "sparse").Metrics!;
+        var campaigns = ModeIn(result, RetrievalScope.Campaigns, "sparse").Metrics!;
+
+        Assert.True(
+            campaigns.RecallAt10 >= wide.RecallAt10,
+            $"campaign pool recall@10 {campaigns.RecallAt10} should not be worse than {wide.RecallAt10}");
+    }
+
+    [Fact]
+    public async Task TheSerialisedShapeKeepsBothPoolsFlatAndDistinct()
+    {
+        // Flat keys, because a wrapper object per mode is what once made the client render
+        // nothing at all. The campaign pool is prefixed rather than nested.
+        var result = await RunAsync();
+
+        using var payload = JsonDocument.Parse(EvaluationRunner.Serialise(result));
+
+        Assert.True(payload.RootElement.TryGetProperty("sparse", out _));
+        Assert.True(payload.RootElement.TryGetProperty("campaignsSparse", out var campaignSparse));
+        Assert.True(payload.RootElement.TryGetProperty("campaignsHybrid", out _));
+        Assert.True(campaignSparse.TryGetProperty("recallAt10", out var recall));
+        Assert.Equal(JsonValueKind.Number, recall.ValueKind);
+    }
+
+    /// <summary>The one result for a mode in a pool; fails loudly if the run stopped producing it.</summary>
+    private static ModeResult ModeIn(EvaluationResult result, RetrievalScope scope, string mode) =>
+        result.Modes.Single(entry => entry.Scope == scope && entry.Mode == mode);
 
     private async Task<EvaluationResult> RunAsync(IEmbeddingGenerator<string, Embedding<float>>? generator = null)
     {

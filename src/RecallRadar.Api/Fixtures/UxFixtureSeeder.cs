@@ -105,13 +105,17 @@ public static class UxFixtureSeeder
     {
         // The same shape EvaluationRunner writes: each mode maps to its numbers or to null, with
         // the reasons beside them. Dense and hybrid are null here because nothing is embedded yet,
-        // which is the state the browser suite has to render.
+        // which is the state the browser suite has to render. The campaign pool is present and
+        // higher than the wider one, because telling the two apart is what the eval page is for.
         const string metrics =
             """
             {"sparse":{"recallAt5":0.075,"recallAt10":0.125,"mrr":0.057,"scoredCaseCount":80,"skippedCaseCount":0},
              "dense":null,
              "hybrid":null,
-             "skipped":{"dense":"No chunk for this vehicle has an embedding yet.","hybrid":"No chunk for this vehicle has an embedding yet."},
+             "campaignsSparse":{"recallAt5":0.500,"recallAt10":0.625,"mrr":0.410,"scoredCaseCount":80,"skippedCaseCount":0},
+             "campaignsDense":null,
+             "campaignsHybrid":null,
+             "skipped":{"dense":"No chunk for this vehicle has an embedding yet.","hybrid":"No chunk for this vehicle has an embedding yet.","campaignsDense":"No chunk for this vehicle has an embedding yet.","campaignsHybrid":"No chunk for this vehicle has an embedding yet."},
              "faithfulness":{"emitted":2,"verified":1}}
             """;
 
