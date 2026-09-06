@@ -2,6 +2,7 @@
 import { render, screen } from "@testing-library/react";
 import type { ApiClient, EvalReport } from "../api/client";
 import { EvalPage } from "./EvalPage";
+import { createStubClient } from "../api/stubClient";
 
 const report: EvalReport = {
   latest: { id: 3, ranAt: "2026-09-03T18:00:00Z", caseCount: 41, metrics: { sparse: { recallAt5: 0.5, recallAt10: 0.6, mrr: 0.4 }, faithfulness: { emitted: 10, verified: 9 } } },
@@ -9,8 +10,7 @@ const report: EvalReport = {
 };
 
 function createClient(getEval: () => Promise<EvalReport>): ApiClient {
-  const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return { getHealth: unsupported, listVehicles: unsupported, search: unsupported, ask: unsupported, getDocument: unsupported, getEval, registerVehicle: unsupported, refreshVehicle: unsupported, getLoad: unsupported, listLoads: unsupported };
+  return createStubClient({ getEval });
 }
 
 describe("EvalPage", () => {

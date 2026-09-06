@@ -1,5 +1,5 @@
 // Registers a vehicle and starts its load, so adding a car never means opening a terminal.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ApiClient, Load, RegisterVehicleRequest } from "../api/client";
 
 interface AddVehicleFormProps {
@@ -43,6 +43,26 @@ export function AddVehicleForm({ client, onLoadStarted }: AddVehicleFormProps) {
   const [problem, setProblem] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [knownModels, setKnownModels] = useState<string[]>([]);
+
+  // NHTSA's vocabulary is not the one on the back of the car: a Mach-E is filed as
+  // "MUSTANG MACH-E BEV BEV". Offering the real names beats making anyone guess them.
+  const { make, modelYear } = form;
+  useEffect(() => {
+    if (!isOpen || !make.trim() || !Number.isInteger(modelYear) || modelYear < EarliestModelYear) {
+      return;
+    }
+
+    let isCurrent = true;
+    client
+      .listNhtsaModels(make.trim(), modelYear)
+      .then((names) => isCurrent && setKnownModels(names))
+      // The list is a convenience. Losing it must not stop anyone typing the name themselves.
+      .catch(() => isCurrent && setKnownModels([]));
+    return () => {
+      isCurrent = false;
+    };
+  }, [client, isOpen, make, modelYear]);
 
   function update(field: keyof RegisterVehicleRequest, value: string) {
     setForm((current) => ({
@@ -94,9 +114,20 @@ export function AddVehicleForm({ client, onLoadStarted }: AddVehicleFormProps) {
         <input
           aria-label="NHTSA model"
           placeholder="EXPLORER"
+          list="nhtsa-model-names"
           value={form.nhtsaModel}
           onChange={(event) => update("nhtsaModel", event.target.value)}
         />
+        <datalist id="nhtsa-model-names" data-testid="nhtsa-model-names">
+          {knownModels.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+        {knownModels.length > 0 && (
+          <small data-testid="model-count">
+            {knownModels.length} names on file for {form.make.trim()} {form.modelYear}
+          </small>
+        )}
       </label>
       <label>
         Model year

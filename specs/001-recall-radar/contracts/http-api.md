@@ -29,9 +29,27 @@ validates the model name against NHTSA's own list, queues the work and answers i
 - `202` with a load body (below) and a `Location` of `/api/loads/{id}`. Asking twice for a vehicle
   whose load is still running returns that same load rather than starting a second pass.
 - `400` problem when the registration could never be looked up, or when the model name is not in
-  NHTSA's list for that make and year — the detail names up to 20 valid options.
+  NHTSA's list for that make and year. The detail suggests the closest names by resemblance and says
+  how many more exist: an alphabetical list once stopped at `F-59` and hid `MUSTANG MACH-E BEV BEV`,
+  which was the name being reached for.
 - `503` problem when NHTSA's model list cannot be reached. The feed being down is not the caller's
   mistake, so it is not a 400.
+
+## GET /api/nhtsa/models
+
+Query: `make` and `modelYear`, both required.
+
+`200` with the model names NHTSA files complaints under, distinct and alphabetical:
+
+```json
+["BRONCO 2DR ICE", "EXPLORER GAS ICE", "MUSTANG MACH-E BEV BEV"]
+```
+
+NHTSA's vocabulary is not the one on the car: a Mach-E is `MUSTANG MACH-E BEV BEV`, and Ford alone
+has 57 names for one model year. The page offers these rather than making anyone guess.
+
+- `400` when either parameter is missing.
+- `503` when NHTSA cannot be reached.
 
 ## POST /api/vehicles/{id}/refresh
 

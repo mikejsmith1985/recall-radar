@@ -190,7 +190,9 @@ function Invoke-CypressSuite {
         try {
             if (-not (Test-Path 'node_modules')) { npm ci }
             npx cypress install | Out-Null
-            npx cypress run
+            # Chrome, not Cypress's bundled Electron. Electron 118 crashes with an access violation
+            # on real keystrokes into an input bound to a <datalist>, and it is not what anyone uses.
+            npx cypress run --browser chrome
             $exitCode = $LASTEXITCODE
         }
         finally {

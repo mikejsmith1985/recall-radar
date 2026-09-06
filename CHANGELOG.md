@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- The add-vehicle form offers NHTSA's own model names for the make and year entered, through a new
+  `GET /api/nhtsa/models`. Their vocabulary is not the one on the car — a Mach-E is filed as
+  `MUSTANG MACH-E BEV BEV` — and Ford alone has 57 names for one model year. Losing the list does
+  not block anything: the name can still be typed.
+
+### Changed
+- The browser suite runs in Chrome rather than Cypress's bundled Electron. Electron 118 crashes with
+  an access violation on real keystrokes into an input bound to a `<datalist>`; Chrome handles the
+  same steps, and it is the browser people actually use.
+- One `createStubClient` builds the test double for the API client, where every method refuses
+  loudly and a test names only the calls it expects. Adding a client method had come to mean editing
+  seven test files.
+
+### Fixed
+- A rejected model name now suggests the closest names rather than listing the first twenty
+  alphabetically. The old message stopped at `F-59` and hid `MUSTANG MACH-E BEV BEV`, which was the
+  name being reached for, while looking like a complete list. Suggestions are ranked by how many
+  characters of the typed name they account for, so a one-letter match cannot outrank a whole word,
+  and the count of names not shown is stated.
+
 - Vehicles can be added in the app. `POST /api/vehicles` validates the model name against NHTSA's
   own list, then queues the load and answers 202 with somewhere to watch it: the work reaches three
   feeds and takes minutes, so no request could wait for it. Asking twice joins the load already

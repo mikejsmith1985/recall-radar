@@ -13,6 +13,7 @@ tests/ux/screenshots/
 # Cypress writes failure screenshots under its own config folder, not the ones above.
 tests/ux/cypress/screenshots/
 tests/ux/cypress/videos/
+tests/ux/cypress/downloads/
 
 # Runtime and local state
 *.pid

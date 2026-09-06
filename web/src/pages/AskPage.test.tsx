@@ -2,6 +2,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ApiClient, AskRequest, AskResponse, SourceDocument } from "../api/client";
 import { AskPage } from "./AskPage";
+import { createStubClient } from "../api/stubClient";
 
 const body = "During the EA17-002 investigation, the agency reviewed and analyzed complaints.";
 const quote = "the agency reviewed and analyzed";
@@ -19,8 +20,7 @@ const grounded: AskResponse = {
 };
 
 function createClient(ask: (request: AskRequest) => Promise<AskResponse>): ApiClient {
-  const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return { getHealth: unsupported, listVehicles: unsupported, search: unsupported, ask, getDocument: () => Promise.resolve(document), getEval: unsupported, registerVehicle: unsupported, refreshVehicle: unsupported, getLoad: unsupported, listLoads: unsupported };
+  return createStubClient({ ask, getDocument: () => Promise.resolve(document) });
 }
 
 function askQuestion(text: string) {

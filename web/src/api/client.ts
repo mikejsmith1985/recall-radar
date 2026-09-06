@@ -212,6 +212,7 @@ export interface ApiClient {
   getHealth(): Promise<HealthReport>;
   listVehicles(): Promise<Vehicle[]>;
   registerVehicle(request: RegisterVehicleRequest): Promise<Load>;
+  listNhtsaModels(make: string, modelYear: number): Promise<string[]>;
   refreshVehicle(vehicleId: number): Promise<Load>;
   getLoad(loadId: number): Promise<Load>;
   listLoads(): Promise<Load[]>;
@@ -272,6 +273,11 @@ export function createApiClient(fetchImpl: FetchLike, baseUrl = ""): ApiClient {
     getHealth: () => fetchImpl(`${baseUrl}/health`, { headers: jsonHeaders }).then(readJson<HealthReport>),
 
     listVehicles: () => fetchImpl(`${baseUrl}/api/vehicles`, { headers: jsonHeaders }).then(readJson<Vehicle[]>),
+
+    listNhtsaModels: (make, modelYear) =>
+      fetchImpl(`${baseUrl}/api/nhtsa/models?make=${encodeURIComponent(make)}&modelYear=${modelYear}`, {
+        headers: jsonHeaders,
+      }).then(readJson<string[]>),
 
     registerVehicle: (request) =>
       fetchImpl(`${baseUrl}/api/vehicles`, {
