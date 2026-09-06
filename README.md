@@ -27,7 +27,7 @@ known character offset.
 | 2013 Explorer Sport | 2,231 | 12 | 6 |
 | 2014 F-150 SVT Raptor | 1,362 | 8 | 2 |
 
-3,634 retrievable passages in total.
+3,634 retrievable passages in total, every one embedded with `voyage-3.5` at 1024 dimensions.
 
 ## Retrieval quality, measured
 
@@ -38,31 +38,49 @@ component filed while it was open. Those are the complaints the investigation wa
 
 Run with `dotnet run --project src/RecallRadar.Ingest -- eval`. Results land in `eval/results.json`.
 
-**80 cases, keyword retrieval only:**
+**80 cases, three modes, two pools:**
 
-| Mode | recall@5 | recall@10 | MRR |
-|---|---|---|---|
-| sparse | 0.075 | 0.125 | 0.057 |
-| dense | not run | not run | not run |
-| hybrid | not run | not run | not run |
+| Pool | Mode | recall@5 | recall@10 | MRR |
+|---|---|---|---|---|
+| all records | sparse | 0.075 | 0.125 | 0.057 |
+| all records | dense | 0.000 | 0.000 | 0.000 |
+| all records | hybrid | 0.000 | 0.000 | 0.000 |
+| recalls and investigations | sparse | 0.375 | 0.375 | **0.375** |
+| recalls and investigations | dense | 0.325 | **0.400** | 0.283 |
+| recalls and investigations | hybrid | 0.375 | **0.400** | 0.279 |
 
 ### Reading that honestly
 
-Keyword retrieval surfaces the governing investigation within ten results about one time in eight.
-That is a poor score and it is the real one.
+The top three rows are bad, and they are the real numbers. Ranking every record together, keyword
+search finds the governing investigation within ten results about one time in eight, and semantic
+search never finds it at all.
 
-The cause is visible in the corpus: 2,231 complaints against 6 investigations. A query written in a
-complaint's own words matches other complaints, which are plentiful and phrased alike, so the one
-authoritative record is buried under them. This is precisely the gap semantic retrieval is supposed
-to close, and the number above is the baseline it has to beat.
+The cause is arithmetic, not ranking. The corpus is 3,593 complaints against 20 recalls and 8
+investigations. A query written in a complaint's own words matches other complaints, which are
+plentiful and phrased alike. Ranking the exhaust-odour investigation against a genuinely relevant
+exhaust complaint puts it **774th**.
 
-It is worth being clear about what this does **not** measure. Finding many similar complaints is
-useful on its own: that is what establishes a symptom as a pattern, and it is what produced the
-nine-citation answer above. This metric asks a narrower question, whether retrieval surfaces the
-investigation or recall specifically, and answers it unflatteringly.
+Hybrid scoring 0.000 while keyword scores 0.125 is not a bug either. Reciprocal rank fusion rewards
+agreement, so a record both methods found beats one only keyword found — and the complaints are what
+both methods find. Fusion actively destroys keyword's occasional lucky hit.
 
-Dense and hybrid are built and tested but report **not run** rather than zero, because no embedding
-key is configured yet. A zero would read as "hybrid is bad" when it means "hybrid was never tried".
+The bottom three rows are the same questions against the same code, with only the pool changed.
+Scoping retrieval to recalls and investigations takes recall@10 from **0.125 to 0.400**, and takes
+dense from **0.000 to 0.400**. Semantic retrieval was never bad at meaning here; it was drowning.
+
+One more thing sits in those numbers. Keyword has the best MRR (0.375) while dense has the best
+recall@10 (0.400), and keyword's three figures are identical — when keyword finds the right campaign
+it puts it at rank 1, whereas dense finds it more often but ranks it lower. Fusing the two buys
+recall and costs precision at the top. That is a trade, not a win.
+
+It is worth being clear about what none of this measures. Finding many similar complaints is useful
+on its own: it is what establishes a symptom as a pattern, and it is what produced the nine-citation
+answer above. This metric asks the narrower question of whether the official record surfaces, and
+before the second pool existed it answered unflatteringly.
+
+Both pools are live in the product. An answer retrieves from the wider pool for evidence and from
+the campaign pool for the recalls and investigations panel, which labels anything it did not quote
+as unverified — a retrieved record is a lead to read, a citation is a claim that survived checking.
 
 ## Running it
 
@@ -99,3 +117,6 @@ Every one of these passed its tests and still failed on real data.
   `F-150 SUPER CREW`, and recalls answer that with 400 Bad Request.
 - The API and the ingest command both shipped a file called `appsettings.json`, so whichever built
   last silently won in a shared output folder.
+- Adding embeddings made the evaluation **worse**, not better: dense and hybrid both scored zero
+  where keyword scored 0.125. Nothing was broken. Retrieval was ranking 28 official records against
+  3,593 complaints, and the complaints won every place. The fix was a second pool, not a better model.

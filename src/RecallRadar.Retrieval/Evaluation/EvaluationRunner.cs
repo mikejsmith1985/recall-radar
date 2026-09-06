@@ -10,14 +10,27 @@ using RecallRadar.Retrieval.Search;
 
 namespace RecallRadar.Retrieval.Evaluation;
 
-/// <summary>One mode's score, or the reason it could not be scored.</summary>
+/// <summary>One mode's score in one pool, or the reason it could not be scored.</summary>
 /// <param name="Mode">The retrieval mode, lower-cased for the wire.</param>
 /// <param name="Metrics">The numbers, or null when the mode was skipped.</param>
 /// <param name="SkippedReason">Why the mode was skipped, or null when it ran.</param>
-public sealed record ModeResult(string Mode, RetrievalMetricsSummary? Metrics, string? SkippedReason)
+/// <param name="Scope">The pool the mode was measured within.</param>
+[method: JsonConstructor]
+public sealed record ModeResult(
+    string Mode, RetrievalMetricsSummary? Metrics, string? SkippedReason, RetrievalScope Scope = RetrievalScope.All)
 {
     [JsonIgnore]
     public bool WasScored => Metrics is not null;
+
+    /// <summary>
+    /// The key this result appears under. The wider pool keeps its bare mode name so an existing
+    /// reader still finds it; the campaign pool is prefixed rather than nested, because nesting is
+    /// what made a client render nothing when it forgot to unwrap. Serialised, not ignored: the
+    /// results file lists one entry per mode per pool, and the bare mode name repeats across pools.
+    /// </summary>
+    public string Key => Scope == RetrievalScope.All
+        ? Mode
+        : Scope.ToString().ToLowerInvariant() + char.ToUpperInvariant(Mode[0]) + Mode[1..];
 }
 
 /// <summary>Everything one evaluation run measured.</summary>
@@ -50,9 +63,16 @@ public sealed class EvaluationRunner(
     {
         var cases = await groundTruth.BuildAsync(vehicleId, cancellationToken);
         var modes = new List<ModeResult>();
-        foreach (var mode in new[] { RetrievalMode.Sparse, RetrievalMode.Dense, RetrievalMode.Hybrid })
+
+        // Both pools, same cases, same order. The comparison between them is the measurement:
+        // it says how much of the failure was ranking and how much was one kind of record
+        // being outnumbered by another.
+        foreach (var scope in new[] { RetrievalScope.All, RetrievalScope.Campaigns })
         {
-            modes.Add(await ScoreModeAsync(mode, cases, cancellationToken));
+            foreach (var mode in new[] { RetrievalMode.Sparse, RetrievalMode.Dense, RetrievalMode.Hybrid })
+            {
+                modes.Add(await ScoreModeAsync(mode, scope, cases, cancellationToken));
+            }
         }
 
         var result = new EvaluationResult(clock.GetUtcNow(), cases.Count, modes);
@@ -62,12 +82,15 @@ public sealed class EvaluationRunner(
 
     /// <summary>Scores one mode over every case, or reports why it could not run.</summary>
     private async Task<ModeResult> ScoreModeAsync(
-        RetrievalMode mode, IReadOnlyList<GroundTruthCase> cases, CancellationToken cancellationToken)
+        RetrievalMode mode,
+        RetrievalScope scope,
+        IReadOnlyList<GroundTruthCase> cases,
+        CancellationToken cancellationToken)
     {
         var name = mode.ToString().ToLowerInvariant();
         if (cases.Count == 0)
         {
-            return new ModeResult(name, null, "No ground-truth cases exist yet. Load records first.");
+            return new ModeResult(name, null, "No ground-truth cases exist yet. Load records first.", scope);
         }
 
         var rankings = new Dictionary<string, IReadOnlyList<long>>(StringComparer.Ordinal);
@@ -75,24 +98,28 @@ public sealed class EvaluationRunner(
         {
             try
             {
-                rankings[groundTruthCase.CaseId] = await RankAsync(mode, groundTruthCase, cancellationToken);
+                rankings[groundTruthCase.CaseId] = await RankAsync(mode, scope, groundTruthCase, cancellationToken);
             }
             catch (Exception failure) when (failure is EmbeddingsUnavailableException or EmbeddingProviderUnavailableException)
             {
-                return new ModeResult(name, null, failure.Message);
+                return new ModeResult(name, null, failure.Message, scope);
             }
         }
 
-        return new ModeResult(name, RetrievalMetrics.Compute(cases, rankings), null);
+        return new ModeResult(name, RetrievalMetrics.Compute(cases, rankings), null, scope);
     }
 
     /// <summary>Retrieves for one case and returns the document ids in rank order.</summary>
     private async Task<IReadOnlyList<long>> RankAsync(
-        RetrievalMode mode, GroundTruthCase groundTruthCase, CancellationToken cancellationToken)
+        RetrievalMode mode,
+        RetrievalScope scope,
+        GroundTruthCase groundTruthCase,
+        CancellationToken cancellationToken)
     {
         var vehicleId = await FindVehicleForAsync(groundTruthCase, cancellationToken);
         if (!SearchRequest.TryCreate(
-            vehicleId, groundTruthCase.QueryText, mode.ToString(), null, null, null, RankingDepth, out var request, out _))
+            vehicleId, groundTruthCase.QueryText, mode.ToString(), null, null, null, RankingDepth,
+            scope.ToString(), out var request, out _))
         {
             return [];
         }
@@ -136,7 +163,7 @@ public sealed class EvaluationRunner(
         var payload = new Dictionary<string, object?>(StringComparer.Ordinal);
         foreach (var mode in result.Modes)
         {
-            payload[mode.Mode] = mode.Metrics is { } metrics
+            payload[mode.Key] = mode.Metrics is { } metrics
                 ? new Dictionary<string, object>(StringComparer.Ordinal)
                 {
                     ["recallAt5"] = metrics.RecallAt5,
@@ -150,7 +177,7 @@ public sealed class EvaluationRunner(
 
         var skipped = result.Modes
             .Where(mode => mode.SkippedReason is not null)
-            .ToDictionary(mode => mode.Mode, mode => mode.SkippedReason!, StringComparer.Ordinal);
+            .ToDictionary(mode => mode.Key, mode => mode.SkippedReason!, StringComparer.Ordinal);
         if (skipped.Count > 0)
         {
             payload["skipped"] = skipped;

@@ -2,6 +2,8 @@
 // has one function here, so the rest of the UI never builds a URL or reads raw JSON.
 
 export type RetrievalMode = "dense" | "sparse" | "hybrid";
+/** Which pool of records a search ranks within. Campaigns are recalls and investigations only. */
+export type RetrievalScope = "all" | "campaigns";
 export type SourceKind = "complaint" | "recall" | "investigation";
 
 export interface HealthReport {
@@ -52,6 +54,7 @@ export interface SearchHit {
 export interface SearchResponse {
   mode: RetrievalMode;
   hits: SearchHit[];
+  scope: RetrievalScope;
 }
 
 export interface AskRequest {
@@ -69,6 +72,19 @@ export interface Citation {
   endOffset: number;
 }
 
+/**
+ * A recall or investigation the campaign pool matched. Retrieved, not quoted: it is something
+ * to read, never evidence for the answer. Only a verified citation is evidence.
+ */
+export interface CampaignMatch {
+  documentId: number;
+  kind: SourceKind;
+  externalId: string;
+  title: string;
+  component: string;
+  filedOn: string | null;
+}
+
 export interface AskResponse {
   answerId: number;
   answer: string;
@@ -78,6 +94,7 @@ export interface AskResponse {
   droppedCitationCount: number;
   linkedCampaigns: string[];
   retrievedDocumentIds: number[];
+  campaignMatches: CampaignMatch[];
 }
 
 export interface SourceDocument {
@@ -107,7 +124,18 @@ export interface EvalMetrics {
   dense?: ModeMetrics | null;
   sparse?: ModeMetrics | null;
   hybrid?: ModeMetrics | null;
+  campaignsDense?: ModeMetrics | null;
+  campaignsSparse?: ModeMetrics | null;
+  campaignsHybrid?: ModeMetrics | null;
   faithfulness?: FaithfulnessMetrics | null;
+}
+
+/** The key one mode occupies in a run's metrics, for a given pool. */
+export function metricsKey(mode: RetrievalMode, scope: RetrievalScope): keyof EvalMetrics {
+  if (scope === "all") {
+    return mode;
+  }
+  return `campaigns${mode.charAt(0).toUpperCase()}${mode.slice(1)}` as keyof EvalMetrics;
 }
 
 export interface EvalRun {

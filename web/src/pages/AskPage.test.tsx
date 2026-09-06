@@ -15,6 +15,7 @@ const grounded: AskResponse = {
   droppedCitationCount: 1,
   linkedCampaigns: ["17V000000"],
   retrievedDocumentIds: [4123],
+  campaignMatches: [],
 };
 
 function createClient(ask: (request: AskRequest) => Promise<AskResponse>): ApiClient {

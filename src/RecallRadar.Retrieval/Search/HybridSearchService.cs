@@ -123,6 +123,14 @@ public sealed class HybridSearchService(
     {
         chunks = chunks.Where(chunk => chunk.Document!.VehicleId == request.VehicleId);
 
+        // The scope narrows which kinds compete. Applied here, before ranking, so the candidate
+        // window is spent on the pool that was asked for rather than on records that cannot appear.
+        if (request.Scope != SearchRequest.DefaultScope)
+        {
+            var kinds = ScopedKinds.Of(request.Scope);
+            chunks = chunks.Where(chunk => kinds.Contains(chunk.Document!.Kind));
+        }
+
         if (request.Component is { } component)
         {
             chunks = chunks.Where(chunk => chunk.Document!.Component == component);

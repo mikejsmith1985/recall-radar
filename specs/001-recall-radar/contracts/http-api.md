@@ -28,13 +28,18 @@ Loading records is a CLI concern (`ingest`), not an API concern; see [cli.md](cl
 ## GET /api/search
 
 Query: `vehicleId` (required), `q` (required, 2–500 chars), `mode` = `dense|sparse|hybrid` (default
-`hybrid`), `component` (optional exact match), `filedFrom`/`filedTo` (optional ISO dates), `limit`
-(default 10, max 50).
+`hybrid`), `scope` = `all|campaigns` (default `all`), `component` (optional exact match),
+`filedFrom`/`filedTo` (optional ISO dates), `limit` (default 10, max 50).
+
+`scope=campaigns` ranks only recalls and investigations. It exists because a vehicle has thousands
+of complaints and a few dozen official records, so ranking them together gives every place to
+complaints. Measured effect on this corpus: recall@10 0.125 → 0.400.
 
 `200`:
 ```json
 {
   "mode": "hybrid",
+  "scope": "all",
   "hits": [
     {
       "documentId": 4123, "chunkId": 4123, "kind": "investigation",
@@ -52,6 +57,8 @@ excluded it.
 - `409` problem `"Embeddings are unavailable; use mode=sparse"` for `dense`/`hybrid` when no
   embedding key is configured or the vehicle has no embedded chunks.
 - `404` when `vehicleId` is unknown.
+- `400` problem `"Unknown scope '<value>'. Use all or campaigns."` — a misspelled scope is an error,
+  never a silent fall back to `all`, which would read as the campaign pool being empty.
 
 ## POST /api/ask
 
@@ -67,6 +74,11 @@ Request: `{ "vehicleId": 1, "question": "exhaust smell inside the cabin", "mode"
   "citations": [
     { "documentId": 4123, "externalId": "EA17002", "kind": "investigation",
       "quote": "the agency reviewed and analyzed", "startOffset": 41, "endOffset": 73 }
+  ],
+  "campaignMatches": [
+    { "documentId": 4123, "kind": "investigation", "externalId": "EA17002",
+      "title": "Exhaust Odor in Passenger Cab",
+      "component": "ENGINE AND ENGINE COOLING:EXHAUST SYSTEM", "filedOn": "2017-07-27" }
   ],
   "droppedCitationCount": 1,
   "linkedCampaigns": ["17V000000"],

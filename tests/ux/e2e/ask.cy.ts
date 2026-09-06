@@ -32,4 +32,29 @@ describe("ask about a symptom", () => {
       cy.get('[data-testid="citation-highlight"]').should("have.text", quote);
     });
   });
+
+  it("shows the recall and investigation the campaign pool found, marked as unverified", () => {
+    // The fixture's answer quotes a complaint only. Without its own pool the recall and the
+    // investigation are outranked by complaints and the owner never learns they exist.
+    cy.get('input[aria-label="Symptom"]').realClick();
+    cy.get('input[aria-label="Symptom"]').realType(Question);
+    cy.get('[data-testid="search-box"] button[type="submit"]').realClick();
+
+    cy.get('[data-testid="answer-panel"]', { timeout: 60000 }).should("exist");
+    cy.get('[data-testid="uncited-matches"]').should("exist");
+    cy.get('[data-testid="uncited-matches"]').should("contain.text", "EA17002");
+    cy.get('[data-testid="uncited-caption"]').should("contain.text", "none of it has been verified");
+  });
+
+  it("keeps a quoted record out of the unverified list", () => {
+    // A record cannot be both proven evidence and an unverified lead. Showing it twice would
+    // blur the only distinction this page exists to make.
+    cy.get('input[aria-label="Symptom"]').realClick();
+    cy.get('input[aria-label="Symptom"]').realType(Question);
+    cy.get('[data-testid="search-box"] button[type="submit"]').realClick();
+
+    cy.get('[data-testid="answer-panel"]', { timeout: 60000 }).should("exist");
+    cy.get('[data-testid="citation-button"]').first().find("blockquote").should("exist");
+    cy.get('[data-testid="uncited-matches"]').should("not.contain.text", "11257832");
+  });
 });

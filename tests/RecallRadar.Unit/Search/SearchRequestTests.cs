@@ -92,4 +92,37 @@ public sealed class SearchRequestTests
     {
         Assert.True(SearchRequest.CandidateWindow >= SearchRequest.MaximumLimit);
     }
+
+    [Fact]
+    public void TryCreate_TreatsAnAbsentScopeAsEveryRecord()
+    {
+        // Adding the second pool must not silently change what an existing caller retrieves.
+        SearchRequest.TryCreate(VehicleId, ValidQuery, "sparse", null, null, null, null, out var request, out _);
+
+        Assert.Equal(SearchRequest.DefaultScope, request!.Scope);
+        Assert.Equal(RetrievalScope.All, request.Scope);
+    }
+
+    [Fact]
+    public void TryCreate_ReadsANamedScope()
+    {
+        SearchRequest.TryCreate(
+            VehicleId, ValidQuery, "sparse", null, null, null, null, "campaigns", out var request, out var problem);
+
+        Assert.Null(problem);
+        Assert.Equal(RetrievalScope.Campaigns, request!.Scope);
+    }
+
+    [Fact]
+    public void TryCreate_RejectsAnUnknownScopeByName()
+    {
+        // A misspelled scope must not quietly fall back to searching everything: that would look
+        // like the campaign pool being empty rather than like a typo.
+        var wasCreated = SearchRequest.TryCreate(
+            VehicleId, ValidQuery, "sparse", null, null, null, null, "recalls", out _, out var problem);
+
+        Assert.False(wasCreated);
+        Assert.Contains("recalls", problem);
+        Assert.Contains("campaigns", problem);
+    }
 }

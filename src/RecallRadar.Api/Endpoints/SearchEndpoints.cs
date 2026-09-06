@@ -71,9 +71,11 @@ public static class SearchEndpoints
         [FromQuery] DateOnly? filedFrom,
         [FromQuery] DateOnly? filedTo,
         [FromQuery] int? limit,
+        [FromQuery] string? scope,
         CancellationToken cancellationToken)
     {
-        if (!SearchRequest.TryCreate(vehicleId, q, mode, component, filedFrom, filedTo, limit, out var request, out var problem))
+        if (!SearchRequest.TryCreate(
+            vehicleId, q, mode, component, filedFrom, filedTo, limit, scope, out var request, out var problem))
         {
             return Results.Problem(detail: problem, statusCode: StatusCodes.Status400BadRequest, title: InvalidRequestTitle);
         }
@@ -83,7 +85,8 @@ public static class SearchEndpoints
             var hits = await search.SearchAsync(request!, cancellationToken);
             return Results.Ok(new SearchResponse(
                 request!.Mode.ToString().ToLowerInvariant(),
-                [.. hits.Select(HitResponse.From)]));
+                [.. hits.Select(HitResponse.From)],
+                request.Scope.ToString().ToLowerInvariant()));
         }
         catch (VehicleNotFoundException notFound)
         {
@@ -153,4 +156,5 @@ public sealed record HitResponse(
 }
 
 /// <summary>The search response: the mode that actually ran, and the hits.</summary>
-public sealed record SearchResponse(string Mode, IReadOnlyList<HitResponse> Hits);
+/// <summary>One page of hits, naming the mode and the pool they were ranked within.</summary>
+public sealed record SearchResponse(string Mode, IReadOnlyList<HitResponse> Hits, string Scope);

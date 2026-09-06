@@ -184,6 +184,65 @@ public sealed class AnswerServiceTests(PostgresFixture postgres) : IAsyncLifetim
         Assert.Equal(1, model.CallCount);
     }
 
+    [Fact]
+    public async Task TheCampaignRecordIsStillShownWhenComplaintsFillEveryPlace()
+    {
+        // The bug this pool exists to fix: one vehicle has thousands of complaints and a handful of
+        // recalls, so a single ranking gives every place to complaints and the official record --
+        // the thing the owner actually asked about -- is never shown to the model at all.
+        await using var context = postgres.CreateContext();
+        await SeedCrowdingComplaintsAsync(context, AnswerService.RecordsShownToModel * 2);
+        var model = new RecordedAnswerModel(RecordedAnswerModel.BuildReply("Yes.", true, []));
+
+        var outcome = await BuildService(context, model)
+            .AskAsync(_vehicleId, Question, RetrievalMode.Sparse, TestContext.Current.CancellationToken);
+
+        Assert.Contains(_investigationId.ToString(), model.LastRecords.Select(record => record.DocumentId));
+        Assert.Contains(_investigationId, outcome.CampaignDocumentIds);
+    }
+
+    [Fact]
+    public async Task TheCampaignPoolNeverContributesAComplaint()
+    {
+        await using var context = postgres.CreateContext();
+        await SeedCrowdingComplaintsAsync(context, AnswerService.RecordsShownToModel * 2);
+        var model = new RecordedAnswerModel(RecordedAnswerModel.BuildReply("Yes.", true, []));
+
+        var outcome = await BuildService(context, model)
+            .AskAsync(_vehicleId, Question, RetrievalMode.Sparse, TestContext.Current.CancellationToken);
+
+        var kindsById = await context.SourceDocuments.AsNoTracking()
+            .Where(document => outcome.CampaignDocumentIds.Contains(document.Id))
+            .Select(document => document.Kind)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        Assert.NotEmpty(kindsById);
+        Assert.DoesNotContain(SourceKind.Complaint, kindsById);
+    }
+
+    [Fact]
+    public async Task TheTwoPoolsAreMergedWithoutShowingTheSameRecordTwice()
+    {
+        // The campaign hit can also be reachable in the wider pool; the model must not be handed
+        // the same record under two entries, which would let one quote be counted twice.
+        var model = new RecordedAnswerModel(RecordedAnswerModel.BuildReply("Yes.", true, []));
+
+        await AskAsync(model);
+
+        var documentIds = model.LastRecords.Select(record => record.DocumentId).ToList();
+        Assert.Equal(documentIds.Count, documentIds.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    /// <summary>Adds complaints that all match the question, so they compete for every place.</summary>
+    private async Task SeedCrowdingComplaintsAsync(RecallRadarDbContext context, int count)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            await SeedAsync(
+                context, SourceKind.Complaint, $"crowd-{index}",
+                $"{ComplaintBody} EXHAUST ODOR CABIN REPORT NUMBER {index}.");
+        }
+    }
+
     private async Task<AnswerOutcome> AskAsync(RecordedAnswerModel model)
     {
         await using var context = postgres.CreateContext();

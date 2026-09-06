@@ -116,7 +116,8 @@ public sealed record AskResponse(
     int DroppedCitationCount,
     IReadOnlyList<DroppedCitationResponse> DroppedCitations,
     IReadOnlyList<string> LinkedCampaigns,
-    IReadOnlyList<long> RetrievedDocumentIds)
+    IReadOnlyList<long> RetrievedDocumentIds,
+    IReadOnlyList<CampaignMatchResponse> CampaignMatches)
 {
     /// <summary>Flattens the outcome into the wire shape from contracts/http-api.md.</summary>
     public static AskResponse From(AnswerOutcome outcome)
@@ -131,7 +132,8 @@ public sealed record AskResponse(
             outcome.DroppedCitationCount,
             [.. outcome.DroppedCitations.Select(DroppedCitationResponse.From)],
             outcome.Answer.LinkedCampaigns,
-            outcome.RetrievedDocumentIds);
+            outcome.RetrievedDocumentIds,
+            [.. outcome.CampaignHits.Select(CampaignMatchResponse.From)]);
     }
 
     private static CitationResponse Describe(Domain.Grounding.VerifiedCitation citation, AnswerOutcome outcome)
@@ -145,6 +147,23 @@ public sealed record AskResponse(
             citation.Citation.Quote,
             citation.StartOffset,
             citation.EndOffset);
+    }
+}
+
+/// <summary>
+/// A recall or investigation the campaign pool matched to the question. Retrieved, not quoted:
+/// it is shown as something to read, never as evidence, because nothing here has been verified
+/// against the answer's text. Only a citation earns that.
+/// </summary>
+public sealed record CampaignMatchResponse(
+    long DocumentId, string Kind, string ExternalId, string Title, string Component, DateOnly? FiledOn)
+{
+    /// <summary>Flattens one campaign-pool hit for the wire.</summary>
+    public static CampaignMatchResponse From(Retrieval.Search.SearchHit hit)
+    {
+        ArgumentNullException.ThrowIfNull(hit);
+        return new CampaignMatchResponse(
+            hit.DocumentId, hit.Kind.ToString().ToLowerInvariant(), hit.ExternalId, hit.Title, hit.Component, hit.FiledOn);
     }
 }
 

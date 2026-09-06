@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-09-04T11:49:25.1220474+00:00",
+  "ranAt": "2026-09-06T13:55:55.1263001+00:00",
   "caseCount": 80,
   "modes": [
     {
@@ -11,17 +11,74 @@
         "scoredCaseCount": 80,
         "skippedCaseCount": 0
       },
-      "skippedReason": null
+      "skippedReason": null,
+      "scope": "All",
+      "key": "sparse"
     },
     {
       "mode": "dense",
-      "metrics": null,
-      "skippedReason": "No chunk for this vehicle has an embedding yet. Run the embed command, or search with mode=sparse."
+      "metrics": {
+        "recallAt5": 0,
+        "recallAt10": 0,
+        "meanReciprocalRank": 0,
+        "scoredCaseCount": 80,
+        "skippedCaseCount": 0
+      },
+      "skippedReason": null,
+      "scope": "All",
+      "key": "dense"
     },
     {
       "mode": "hybrid",
-      "metrics": null,
-      "skippedReason": "No chunk for this vehicle has an embedding yet. Run the embed command, or search with mode=sparse."
+      "metrics": {
+        "recallAt5": 0,
+        "recallAt10": 0,
+        "meanReciprocalRank": 0,
+        "scoredCaseCount": 80,
+        "skippedCaseCount": 0
+      },
+      "skippedReason": null,
+      "scope": "All",
+      "key": "hybrid"
+    },
+    {
+      "mode": "sparse",
+      "metrics": {
+        "recallAt5": 0.375,
+        "recallAt10": 0.375,
+        "meanReciprocalRank": 0.375,
+        "scoredCaseCount": 80,
+        "skippedCaseCount": 0
+      },
+      "skippedReason": null,
+      "scope": "Campaigns",
+      "key": "campaignsSparse"
+    },
+    {
+      "mode": "dense",
+      "metrics": {
+        "recallAt5": 0.325,
+        "recallAt10": 0.4,
+        "meanReciprocalRank": 0.2833333333333333,
+        "scoredCaseCount": 80,
+        "skippedCaseCount": 0
+      },
+      "skippedReason": null,
+      "scope": "Campaigns",
+      "key": "campaignsDense"
+    },
+    {
+      "mode": "hybrid",
+      "metrics": {
+        "recallAt5": 0.375,
+        "recallAt10": 0.4,
+        "meanReciprocalRank": 0.2791666666666667,
+        "scoredCaseCount": 80,
+        "skippedCaseCount": 0
+      },
+      "skippedReason": null,
+      "scope": "Campaigns",
+      "key": "campaignsHybrid"
     }
   ]
 }

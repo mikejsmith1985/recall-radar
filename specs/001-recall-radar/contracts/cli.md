@@ -27,21 +27,28 @@ failure aborts the transaction and prints `error:`; `--skip-embed` or a missing 
 Back-fills `embedding` for chunks where it is null, in batches of ≤ 128. Prints
 `chunks: embedded N, remaining 0`. Exit 1 with `error: VOYAGE_API_KEY not set` when unavailable.
 
-## `eval [--vehicle <displayName>] [--modes dense,sparse,hybrid] [--questions eval/questions.json]`
+## `eval [--vehicle <displayName>]`
 
-Builds ground truth from `investigation_links`, runs every case in every requested mode, computes
-recall@5, recall@10 and MRR, runs the faithfulness question set through `/ask` logic, and stores an
-`evaluation_runs` row. Also writes `eval/results.json` (committed as the README evidence).
+Builds ground truth from `investigation_links`, then runs every case through every mode in **both
+pools** — all records, and recalls plus investigations alone. Computes recall@5, recall@10 and MRR
+per combination, and stores an `evaluation_runs` row. Also writes `eval/results.json`, committed as
+the README's evidence, where each entry carries a `scope` name and a unique `key`.
 
 Output:
 ```
-cases: 41 (investigations with campaigns: 2)
-mode      recall@5  recall@10  mrr
-dense     0.732     0.854      0.611
-sparse    0.683     0.780      0.552
-hybrid    0.805     0.902      0.667
-faithfulness: 58/60 citations verified
-run id: 3
+cases: 80
+
+pool       mode      recall@5 recall@10       mrr    scored
+-----------------------------------------------------------
+all        sparse       0.075     0.125     0.057        80
+all        dense        0.000     0.000     0.000        80
+all        hybrid       0.000     0.000     0.000        80
+campaigns  sparse       0.375     0.375     0.375        80
+campaigns  dense        0.325     0.400     0.283        80
+campaigns  hybrid       0.375     0.400     0.279        80
+
+done in 00:00:25
+written: <repo>/eval/results.json
 ```
 Modes needing embeddings are skipped with a note when unavailable. Re-running on unchanged data must
 reproduce identical numbers (SC-006).

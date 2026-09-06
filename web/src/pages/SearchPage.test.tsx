@@ -26,7 +26,7 @@ describe("SearchPage", () => {
     const requests: SearchParams[] = [];
     const client = createClient((params) => {
       requests.push(params);
-      return Promise.resolve({ mode: params.mode, hits: [hit] });
+      return Promise.resolve({ mode: params.mode, hits: [hit], scope: "all" as const });
     });
     render(<SearchPage client={client} vehicleId={7} isEmbeddingsAvailable />);
 
@@ -40,7 +40,7 @@ describe("SearchPage", () => {
     const requests: SearchParams[] = [];
     const client = createClient((params) => {
       requests.push(params);
-      return Promise.resolve({ mode: params.mode, hits: [hit] });
+      return Promise.resolve({ mode: params.mode, hits: [hit], scope: "all" as const });
     });
     render(<SearchPage client={client} vehicleId={7} isEmbeddingsAvailable />);
     submitQuery("steering locks");
@@ -67,7 +67,7 @@ describe("SearchPage", () => {
     const requests: SearchParams[] = [];
     const client = createClient((params) => {
       requests.push(params);
-      return Promise.resolve({ mode: params.mode, hits: [] });
+      return Promise.resolve({ mode: params.mode, hits: [], scope: "all" as const });
     });
     render(<SearchPage client={client} vehicleId={7} isEmbeddingsAvailable={false} />);
 

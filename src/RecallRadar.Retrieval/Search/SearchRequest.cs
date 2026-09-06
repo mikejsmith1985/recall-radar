@@ -14,6 +14,7 @@ namespace RecallRadar.Retrieval.Search;
 /// <param name="FiledFrom">Optional earliest filing date, inclusive.</param>
 /// <param name="FiledTo">Optional latest filing date, inclusive.</param>
 /// <param name="Limit">How many hits to return.</param>
+/// <param name="Scope">Which pool of records may be returned.</param>
 public sealed record SearchRequest(
     int VehicleId,
     string Query,
@@ -21,7 +22,8 @@ public sealed record SearchRequest(
     string? Component,
     DateOnly? FiledFrom,
     DateOnly? FiledTo,
-    int Limit)
+    int Limit,
+    RetrievalScope Scope)
 {
     public const int MinimumQueryLength = 2;
     public const int MaximumQueryLength = 500;
@@ -30,6 +32,9 @@ public sealed record SearchRequest(
 
     /// <summary>What an unnamed mode means, per the HTTP contract.</summary>
     public const RetrievalMode DefaultMode = RetrievalMode.Hybrid;
+
+    /// <summary>What an unnamed scope means: every record, which is what search did before pools existed.</summary>
+    public const RetrievalScope DefaultScope = RetrievalScope.All;
 
     /// <summary>How many candidates each method contributes before fusion. Fifty per the research note.</summary>
     public const int CandidateWindow = 50;
@@ -47,10 +52,27 @@ public sealed record SearchRequest(
         DateOnly? filedTo,
         int? limit,
         out SearchRequest? request,
+        out string? problem) =>
+        TryCreate(vehicleId, query, mode, component, filedFrom, filedTo, limit, null, out request, out problem);
+
+    /// <summary>
+    /// Builds a request for a named pool of records. Separate from the seven-argument overload so
+    /// that every existing caller keeps searching everything, which is what it used to do.
+    /// </summary>
+    public static bool TryCreate(
+        int vehicleId,
+        string? query,
+        string? mode,
+        string? component,
+        DateOnly? filedFrom,
+        DateOnly? filedTo,
+        int? limit,
+        string? scope,
+        out SearchRequest? request,
         out string? problem)
     {
         request = null;
-        problem = FindProblem(query, mode, filedFrom, filedTo, limit);
+        problem = FindProblem(query, mode, filedFrom, filedTo, limit, scope);
         if (problem is not null)
         {
             return false;
@@ -63,7 +85,8 @@ public sealed record SearchRequest(
             string.IsNullOrWhiteSpace(component) ? null : component.Trim().ToUpperInvariant(),
             filedFrom,
             filedTo,
-            limit ?? DefaultLimit);
+            limit ?? DefaultLimit,
+            ResolveScope(scope)!.Value);
         return true;
     }
 
@@ -71,7 +94,12 @@ public sealed record SearchRequest(
     private static RetrievalMode? ResolveMode(string? mode) =>
         string.IsNullOrWhiteSpace(mode) ? DefaultMode : RetrievalModes.TryParse(mode);
 
-    private static string? FindProblem(string? query, string? mode, DateOnly? filedFrom, DateOnly? filedTo, int? limit)
+    /// <summary>An absent scope means every record; a named scope must be one we know.</summary>
+    private static RetrievalScope? ResolveScope(string? scope) =>
+        string.IsNullOrWhiteSpace(scope) ? DefaultScope : RetrievalScopes.TryParse(scope);
+
+    private static string? FindProblem(
+        string? query, string? mode, DateOnly? filedFrom, DateOnly? filedTo, int? limit, string? scope)
     {
         var trimmed = query?.Trim() ?? string.Empty;
         if (trimmed.Length is < MinimumQueryLength or > MaximumQueryLength)
@@ -82,6 +110,11 @@ public sealed record SearchRequest(
         if (ResolveMode(mode) is null)
         {
             return $"Unknown mode '{mode}'. Use dense, sparse, or hybrid.";
+        }
+
+        if (ResolveScope(scope) is null)
+        {
+            return $"Unknown scope '{scope}'. Use all or campaigns.";
         }
 
         if (limit is < 1 or > MaximumLimit)
