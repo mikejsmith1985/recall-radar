@@ -47,4 +47,23 @@ describe("adding and loading a vehicle", () => {
     cy.get('[data-testid="recent-loads"]').should("contain.text", "manual");
     cy.get('[data-testid="recent-loads"]').should("contain.text", "scheduled");
   });
+
+  it("still lets a model name be typed when NHTSA's list is not reachable", () => {
+    // The fixture environment never calls NHTSA, so the picker has nothing to offer. Losing the
+    // convenience must not block registering a vehicle.
+    cy.get('[data-testid="add-vehicle-open"]').realClick();
+    cy.get('[data-testid="model-count"]').should("not.exist");
+
+    cy.get('input[aria-label="NHTSA model"]').realClick();
+    cy.get('input[aria-label="NHTSA model"]').realType("MUSTANG MACH-E BEV BEV");
+
+    cy.get('input[aria-label="NHTSA model"]').should("have.value", "MUSTANG MACH-E BEV BEV");
+  });
+
+  it("attaches the model list to the input, so the browser can offer names when there are some", () => {
+    cy.get('[data-testid="add-vehicle-open"]').realClick();
+
+    cy.get('input[aria-label="NHTSA model"]').should("have.attr", "list", "nhtsa-model-names");
+    cy.get('[data-testid="nhtsa-model-names"]').should("exist");
+  });
 });

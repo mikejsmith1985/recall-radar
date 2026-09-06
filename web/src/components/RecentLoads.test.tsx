@@ -1,6 +1,7 @@
 // Checks the recent-loads table makes an overnight failure visible rather than silent.
 import { render, screen, waitFor } from "@testing-library/react";
 import { describeWhen, RecentLoads, VisibleLoadCount } from "./RecentLoads";
+import { createStubClient } from "../api/stubClient";
 import type { ApiClient, Load } from "../api/client";
 
 const succeeded: Load = {
@@ -27,19 +28,7 @@ const failed: Load = {
 };
 
 function createClient(listLoads: () => Promise<Load[]>): ApiClient {
-  const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return {
-    getHealth: unsupported,
-    listVehicles: unsupported,
-    search: unsupported,
-    ask: unsupported,
-    getDocument: unsupported,
-    getEval: unsupported,
-    registerVehicle: unsupported,
-    refreshVehicle: unsupported,
-    getLoad: unsupported,
-    listLoads,
-  };
+  return createStubClient({ listLoads });
 }
 
 describe("RecentLoads", () => {

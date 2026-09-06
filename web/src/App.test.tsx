@@ -2,14 +2,19 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { App } from "./App";
 import type { ApiClient, HealthReport, Vehicle } from "./api/client";
+import { createStubClient } from "./api/stubClient";
 
 const vehicles: Vehicle[] = [
   { id: 1, displayName: "2013 Explorer Sport", make: "FORD", modelYear: 2013, counts: { complaint: 2231, recall: 12, investigation: 4 } },
 ];
 
 function createClient(health: HealthReport, listVehicles: () => Promise<Vehicle[]>): ApiClient {
-  const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return { getHealth: () => Promise.resolve(health), listVehicles, search: unsupported, ask: unsupported, getDocument: unsupported, getEval: () => Promise.resolve({ latest: null, history: [] }), registerVehicle: unsupported, refreshVehicle: unsupported, getLoad: unsupported, listLoads: () => Promise.resolve([]) };
+  return createStubClient({
+    getHealth: () => Promise.resolve(health),
+    listVehicles,
+    getEval: () => Promise.resolve({ latest: null, history: [] }),
+    listLoads: () => Promise.resolve([]),
+  });
 }
 
 const healthy: HealthReport = { status: "ok", database: "ok", embeddings: "ok", answering: "ok" };

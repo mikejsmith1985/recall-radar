@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecallRadar.Api.Loading;
+using RecallRadar.Domain.Vehicles;
 using RecallRadar.Ingest.Config;
 using RecallRadar.Ingest.Nhtsa;
 using RecallRadar.Retrieval.Persistence;
@@ -24,8 +25,11 @@ public static class VehicleEndpoints
     private const string UnknownVehicleTitle = "Unknown vehicle";
     private const string FeedUnavailableTitle = "NHTSA unavailable";
 
-    /// <summary>How many known model names to list back when a name is rejected.</summary>
-    public const int SuggestionLimit = 20;
+    /// <summary>
+    /// How many known model names to suggest when one is rejected. Few, because they are ranked
+    /// by resemblance now: twenty alphabetical names once stopped at "F-59" and hid the Mach-E.
+    /// </summary>
+    public const int SuggestionLimit = 8;
 
     /// <summary>Registers the vehicle write and load-status endpoints.</summary>
     public static IEndpointRouteBuilder MapVehicleEndpoints(this IEndpointRouteBuilder endpoints)
@@ -35,6 +39,7 @@ public static class VehicleEndpoints
         endpoints.MapPost("/api/vehicles/{id:int}/refresh", RefreshAsync);
         endpoints.MapGet("/api/loads/{id:long}", ReadLoadAsync);
         endpoints.MapGet("/api/loads", ListLoadsAsync);
+        endpoints.MapGet("/api/nhtsa/models", ListNhtsaModelsAsync);
         return endpoints;
     }
 
@@ -122,8 +127,39 @@ public static class VehicleEndpoints
     }
 
     /// <summary>
-    /// Rejects a model name NHTSA does not know, naming the ones it does. This is the error people
-    /// actually hit, and a list of valid names turns it into something they can act on.
+    /// The model names NHTSA files complaints under for one make and year, so the page can offer
+    /// them rather than make somebody guess a vocabulary that calls a Mach-E "MUSTANG MACH-E BEV BEV".
+    /// </summary>
+    private static async Task<IResult> ListNhtsaModelsAsync(
+        [FromQuery] string? make,
+        [FromQuery] int? modelYear,
+        [FromServices] NhtsaModelsClient models,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(make) || modelYear is not { } year)
+        {
+            return Results.Problem(
+                detail: "A make and a model year are both required.",
+                statusCode: StatusCodes.Status400BadRequest, title: InvalidRequestTitle);
+        }
+
+        try
+        {
+            var known = await models.GetModelNamesAsync(make.Trim().ToUpperInvariant(), year, cancellationToken);
+            // Distinct and ordered: NHTSA repeats a name once per body style, which reads as a bug.
+            return Results.Ok(known.Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal).ToList());
+        }
+        catch (HttpRequestException unreachable)
+        {
+            return Results.Problem(
+                detail: $"NHTSA's model list could not be reached: {unreachable.Message}",
+                statusCode: StatusCodes.Status503ServiceUnavailable, title: FeedUnavailableTitle);
+        }
+    }
+
+    /// <summary>
+    /// Rejects a model name NHTSA does not know, suggesting the ones it does. This is the error
+    /// people actually hit, and the suggestions are what turn it into something they can act on.
     /// </summary>
     private static async Task<IResult?> FindModelRejectionAsync(
         NhtsaModelsClient models, VehicleRegistration registration, CancellationToken cancellationToken)
@@ -146,10 +182,16 @@ public static class VehicleEndpoints
             return null;
         }
 
+        // Ranked by resemblance rather than listed alphabetically, so the name being reached for
+        // is first instead of cut off partway down the alphabet.
+        var suggestions = ModelNameMatcher.Rank(registration.NhtsaModel, known, SuggestionLimit);
+        var remaining = known.Distinct(StringComparer.OrdinalIgnoreCase).Count() - suggestions.Count;
+        var more = remaining > 0 ? $" ({remaining} more exist.)" : string.Empty;
+
         return Results.Problem(
             detail:
                 $"NHTSA has no complaint model named '{registration.NhtsaModel}' for {registration.Make} " +
-                $"{registration.ModelYear}. Known names include: {string.Join(", ", known.Order().Take(SuggestionLimit))}.",
+                $"{registration.ModelYear}. Did you mean: {string.Join(", ", suggestions)}?{more}",
             statusCode: StatusCodes.Status400BadRequest,
             title: UnknownModelTitle);
     }

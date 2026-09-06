@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AddVehicleForm, EarliestModelYear, findProblem, latestModelYear } from "./AddVehicleForm";
 import { ApiError } from "../api/client";
+import { createStubClient } from "../api/stubClient";
 import type { ApiClient, Load, RegisterVehicleRequest } from "../api/client";
 
 const queued: Load = {
@@ -19,19 +20,7 @@ const queued: Load = {
 };
 
 function createClient(registerVehicle: (request: RegisterVehicleRequest) => Promise<Load>): ApiClient {
-  const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return {
-    getHealth: unsupported,
-    listVehicles: unsupported,
-    search: unsupported,
-    ask: unsupported,
-    getDocument: unsupported,
-    getEval: unsupported,
-    registerVehicle,
-    refreshVehicle: unsupported,
-    getLoad: unsupported,
-    listLoads: unsupported,
-  };
+  return createStubClient({ registerVehicle });
 }
 
 function openAndFill(values: { model?: string; name?: string; year?: string } = {}) {
@@ -117,5 +106,56 @@ describe("AddVehicleForm", () => {
     expect(findProblem({ ...base, displayName: "" }, now)).toContain("name is required");
     expect(findProblem({ ...base, modelYear: EarliestModelYear - 1 }, now)).toContain("model year");
     expect(findProblem({ ...base, modelYear: latestModelYear(now) + 1 }, now)).toContain("model year");
+  });
+
+  it("offers the names NHTSA actually files under, so nobody has to guess the vocabulary", async () => {
+    // A Mach-E is filed as "MUSTANG MACH-E BEV BEV". Nobody would type that unprompted.
+    const client = createStubClient({
+      registerVehicle: () => Promise.resolve(queued),
+      listNhtsaModels: () => Promise.resolve(["MUSTANG ICE", "MUSTANG MACH-E BEV BEV"]),
+    });
+    render(<AddVehicleForm client={client} onLoadStarted={() => undefined} />);
+
+    fireEvent.click(screen.getByTestId("add-vehicle-open"));
+
+    await waitFor(() => expect(screen.getByTestId("model-count").textContent).toContain("2 names on file"));
+    const options = screen.getByTestId("nhtsa-model-names").querySelectorAll("option");
+    expect([...options].map((option) => option.getAttribute("value"))).toContain("MUSTANG MACH-E BEV BEV");
+  });
+
+  it("asks for the names of the make and year actually entered", async () => {
+    const asked: { make: string; year: number }[] = [];
+    const client = createStubClient({
+      registerVehicle: () => Promise.resolve(queued),
+      listNhtsaModels: (make, modelYear) => {
+        asked.push({ make, year: modelYear });
+        return Promise.resolve([]);
+      },
+    });
+    render(<AddVehicleForm client={client} onLoadStarted={() => undefined} />);
+
+    fireEvent.click(screen.getByTestId("add-vehicle-open"));
+    fireEvent.change(screen.getByLabelText("Model year"), { target: { value: "2026" } });
+
+    await waitFor(() => expect(asked.some((entry) => entry.year === 2026 && entry.make === "Ford")).toBe(true));
+  });
+
+  it("still lets the name be typed when the list cannot be fetched", async () => {
+    // The list is a convenience. Losing it must not block registering a vehicle.
+    const sent: RegisterVehicleRequest[] = [];
+    const client = createStubClient({
+      registerVehicle: (request) => {
+        sent.push(request);
+        return Promise.resolve(queued);
+      },
+      listNhtsaModels: () => Promise.reject(new Error("offline")),
+    });
+    render(<AddVehicleForm client={client} onLoadStarted={() => undefined} />);
+
+    openAndFill();
+    fireEvent.submit(screen.getByTestId("add-vehicle-form"));
+
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(screen.queryByTestId("model-count")).toBeNull();
   });
 });

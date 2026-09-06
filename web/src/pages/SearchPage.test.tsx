@@ -2,12 +2,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ApiError, type ApiClient, type SearchParams, type SearchResponse } from "../api/client";
 import { SearchPage } from "./SearchPage";
+import { createStubClient } from "../api/stubClient";
 
 const hit = { documentId: 1, chunkId: 1, kind: "complaint" as const, externalId: "11760888", title: "", component: "STEERING", filedOn: "2019-01-02", snippet: "Steering locked", denseRank: null, sparseRank: 1, fusedScore: 0.0164 };
 
 function createClient(search: (params: SearchParams) => Promise<SearchResponse>): ApiClient {
-  const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return { getHealth: unsupported, listVehicles: unsupported, search, ask: unsupported, getDocument: unsupported, getEval: unsupported, registerVehicle: unsupported, refreshVehicle: unsupported, getLoad: unsupported, listLoads: unsupported };
+  return createStubClient({ search });
 }
 
 function submitQuery(text: string) {

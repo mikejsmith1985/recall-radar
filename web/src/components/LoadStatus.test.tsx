@@ -1,6 +1,7 @@
 // Checks the load view polls while a load runs, stops when it ends, and shows a failure's reason.
 import { render, screen, waitFor } from "@testing-library/react";
 import { describeState, LoadStatus, summariseReport } from "./LoadStatus";
+import { createStubClient } from "../api/stubClient";
 import type { ApiClient, Load } from "../api/client";
 
 const running: Load = {
@@ -27,19 +28,7 @@ const succeeded: Load = {
 };
 
 function createClient(getLoad: (id: number) => Promise<Load>): ApiClient {
-  const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return {
-    getHealth: unsupported,
-    listVehicles: unsupported,
-    search: unsupported,
-    ask: unsupported,
-    getDocument: unsupported,
-    getEval: unsupported,
-    registerVehicle: unsupported,
-    refreshVehicle: unsupported,
-    getLoad,
-    listLoads: unsupported,
-  };
+  return createStubClient({ getLoad });
 }
 
 describe("LoadStatus", () => {

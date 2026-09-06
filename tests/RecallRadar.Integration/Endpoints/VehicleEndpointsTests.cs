@@ -46,7 +46,7 @@ public sealed class VehicleEndpointsTests(PostgresFixture postgres) : IDisposabl
     }
 
     [Fact]
-    public async Task Register_RejectsAModelNhtsaDoesNotKnowAndNamesOnesItDoes()
+    public async Task Register_RejectsAModelNhtsaDoesNotKnowAndSuggestsOnesItDoes()
     {
         // This is the mistake people actually make, and a bare "invalid" would leave them stuck.
         using var client = CreateClient();
@@ -58,6 +58,52 @@ public sealed class VehicleEndpointsTests(PostgresFixture postgres) : IDisposabl
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("EXPLORRER", problem, StringComparison.Ordinal);
         Assert.Contains("EXPLORER", problem, StringComparison.Ordinal);
+        Assert.Contains("Did you mean", problem, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Register_SuggestsTheClosestNameFirstRatherThanTheAlphabeticallyFirst()
+    {
+        // The bug: twenty names in alphabetical order stopped at "F-59" and hid the one being
+        // reached for. Suggestions are ranked by resemblance now.
+        using var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/vehicles", BuildRequest() with { NhtsaModel = "TAURUS SHO" }, TestContext.Current.CancellationToken);
+        var problem = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        var suggestions = problem[(problem.IndexOf("Did you mean", StringComparison.Ordinal))..];
+        Assert.Contains("TAURUS", suggestions, StringComparison.Ordinal);
+        // A name sharing nothing with what was typed is not a suggestion, it is noise.
+        Assert.DoesNotContain("EXPLORER", suggestions, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Models_ListsWhatNhtsaFilesComplaintsUnderForThatMakeAndYear()
+    {
+        using var client = CreateClient();
+
+        var models = await client.GetFromJsonAsync<List<string>>(
+            $"/api/nhtsa/models?make=Ford&modelYear={NhtsaFixtureServer.FixtureModelYear}",
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(models);
+        Assert.Contains("EXPLORER", models);
+        Assert.Equal(models.Distinct(StringComparer.OrdinalIgnoreCase).Count(), models.Count);
+        Assert.Equal(models.Order(StringComparer.Ordinal), models);
+    }
+
+    [Theory]
+    [InlineData("/api/nhtsa/models")]
+    [InlineData("/api/nhtsa/models?make=Ford")]
+    [InlineData("/api/nhtsa/models?modelYear=2013")]
+    public async Task Models_NeedsBothAMakeAndAYear(string url)
+    {
+        using var client = CreateClient();
+
+        var response = await client.GetAsync(url, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Theory]
