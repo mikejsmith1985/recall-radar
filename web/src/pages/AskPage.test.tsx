@@ -20,7 +20,7 @@ const grounded: AskResponse = {
 
 function createClient(ask: (request: AskRequest) => Promise<AskResponse>): ApiClient {
   const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return { getHealth: unsupported, listVehicles: unsupported, search: unsupported, ask, getDocument: () => Promise.resolve(document), getEval: unsupported };
+  return { getHealth: unsupported, listVehicles: unsupported, search: unsupported, ask, getDocument: () => Promise.resolve(document), getEval: unsupported, registerVehicle: unsupported, refreshVehicle: unsupported, getLoad: unsupported, listLoads: unsupported };
 }
 
 function askQuestion(text: string) {

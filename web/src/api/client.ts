@@ -170,9 +170,51 @@ export class ApiError extends Error {
   }
 }
 
+/** How far a load has got. It only ever moves forwards through these. */
+export type LoadState = "queued" | "running" | "succeeded" | "failed";
+
+/** What a load produced. Absent until it succeeds, and shaped by the version that wrote it. */
+export interface LoadReport {
+  complaintsNew?: number;
+  complaintsUnchanged?: number;
+  recallsNew?: number;
+  investigationsNew?: number;
+  linksCreated?: number;
+  chunksCreated?: number;
+  chunksEmbedded?: number;
+}
+
+/** One load of a vehicle's NHTSA records: where it has got to, and what it produced. */
+export interface Load {
+  id: number;
+  vehicleId: number | null;
+  displayName: string;
+  state: LoadState;
+  trigger: "manual" | "scheduled";
+  isFinished: boolean;
+  queuedAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  message: string | null;
+  report: LoadReport | null;
+}
+
+/** A vehicle as the owner describes it, with the NHTSA names its records are filed under. */
+export interface RegisterVehicleRequest {
+  make: string;
+  nhtsaModel: string;
+  recallModel?: string | null;
+  modelYear: number;
+  displayName: string;
+}
+
 export interface ApiClient {
   getHealth(): Promise<HealthReport>;
   listVehicles(): Promise<Vehicle[]>;
+  registerVehicle(request: RegisterVehicleRequest): Promise<Load>;
+  refreshVehicle(vehicleId: number): Promise<Load>;
+  getLoad(loadId: number): Promise<Load>;
+  listLoads(): Promise<Load[]>;
   search(params: SearchParams): Promise<SearchResponse>;
   ask(request: AskRequest): Promise<AskResponse>;
   getDocument(documentId: number): Promise<SourceDocument>;
@@ -230,6 +272,24 @@ export function createApiClient(fetchImpl: FetchLike, baseUrl = ""): ApiClient {
     getHealth: () => fetchImpl(`${baseUrl}/health`, { headers: jsonHeaders }).then(readJson<HealthReport>),
 
     listVehicles: () => fetchImpl(`${baseUrl}/api/vehicles`, { headers: jsonHeaders }).then(readJson<Vehicle[]>),
+
+    registerVehicle: (request) =>
+      fetchImpl(`${baseUrl}/api/vehicles`, {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify(request),
+      }).then(readJson<Load>),
+
+    refreshVehicle: (vehicleId) =>
+      fetchImpl(`${baseUrl}/api/vehicles/${vehicleId}/refresh`, {
+        method: "POST",
+        headers: jsonHeaders,
+      }).then(readJson<Load>),
+
+    getLoad: (loadId) =>
+      fetchImpl(`${baseUrl}/api/loads/${loadId}`, { headers: jsonHeaders }).then(readJson<Load>),
+
+    listLoads: () => fetchImpl(`${baseUrl}/api/loads`, { headers: jsonHeaders }).then(readJson<Load[]>),
 
     search: (params) =>
       fetchImpl(`${baseUrl}/api/search?${buildSearchQuery(params)}`, { headers: jsonHeaders }).then(

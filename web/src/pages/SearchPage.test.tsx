@@ -7,7 +7,7 @@ const hit = { documentId: 1, chunkId: 1, kind: "complaint" as const, externalId:
 
 function createClient(search: (params: SearchParams) => Promise<SearchResponse>): ApiClient {
   const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return { getHealth: unsupported, listVehicles: unsupported, search, ask: unsupported, getDocument: unsupported, getEval: unsupported };
+  return { getHealth: unsupported, listVehicles: unsupported, search, ask: unsupported, getDocument: unsupported, getEval: unsupported, registerVehicle: unsupported, refreshVehicle: unsupported, getLoad: unsupported, listLoads: unsupported };
 }
 
 function submitQuery(text: string) {

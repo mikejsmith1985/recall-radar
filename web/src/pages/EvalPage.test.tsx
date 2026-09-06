@@ -10,7 +10,7 @@ const report: EvalReport = {
 
 function createClient(getEval: () => Promise<EvalReport>): ApiClient {
   const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return { getHealth: unsupported, listVehicles: unsupported, search: unsupported, ask: unsupported, getDocument: unsupported, getEval };
+  return { getHealth: unsupported, listVehicles: unsupported, search: unsupported, ask: unsupported, getDocument: unsupported, getEval, registerVehicle: unsupported, refreshVehicle: unsupported, getLoad: unsupported, listLoads: unsupported };
 }
 
 describe("EvalPage", () => {

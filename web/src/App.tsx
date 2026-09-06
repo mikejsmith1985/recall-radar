@@ -1,7 +1,10 @@
 // The application shell: loads health and vehicles once, keeps the selected vehicle, and switches
 // between the search, ask and evaluation views.
-import { useEffect, useState } from "react";
-import type { ApiClient, HealthReport, Vehicle } from "./api/client";
+import { useCallback, useEffect, useState } from "react";
+import type { ApiClient, HealthReport, Load, Vehicle } from "./api/client";
+import { AddVehicleForm } from "./components/AddVehicleForm";
+import { LoadStatus } from "./components/LoadStatus";
+import { RecentLoads } from "./components/RecentLoads";
 import { VehiclePicker } from "./components/VehiclePicker";
 import { AskPage } from "./pages/AskPage";
 import { EvalPage } from "./pages/EvalPage";
@@ -28,6 +31,8 @@ export function App({ client }: AppProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeLoad, setActiveLoad] = useState<Load | null>(null);
+  const [vehiclesVersion, setVehiclesVersion] = useState(0);
 
   useEffect(() => {
     let isCurrent = true;
@@ -47,7 +52,14 @@ export function App({ client }: AppProps) {
     return () => {
       isCurrent = false;
     };
-  }, [client]);
+  }, [client, vehiclesVersion]);
+
+  // A finished load means the vehicle list is stale: it either gained a vehicle or gained its
+  // records, and the counts beside each name are now wrong.
+  const handleLoadFinished = useCallback((finished: Load) => {
+    setActiveLoad(finished);
+    setVehiclesVersion((version) => version + 1);
+  }, []);
 
   const isEmbeddingsAvailable = health.embeddings === "ok";
   const isAnsweringAvailable = health.answering === "ok";
@@ -66,6 +78,12 @@ export function App({ client }: AppProps) {
       </header>
       <section className="panel">
         {loadError ? <p className="error-state" data-testid="vehicle-load-error">{loadError}</p> : <VehiclePicker vehicles={vehicles} selectedVehicleId={selectedVehicleId} onSelect={setSelectedVehicleId} />}
+        <AddVehicleForm client={client} onLoadStarted={setActiveLoad} />
+        {activeLoad && <LoadStatus client={client} load={activeLoad} onFinished={handleLoadFinished} />}
+        <details className="recent-loads-panel">
+          <summary data-testid="recent-loads-toggle">Recent loads</summary>
+          <RecentLoads client={client} refreshToken={vehiclesVersion} />
+        </details>
       </section>
       {view === "search" && <SearchPage client={client} vehicleId={selectedVehicleId} isEmbeddingsAvailable={isEmbeddingsAvailable} />}
       {view === "ask" && <AskPage client={client} vehicleId={selectedVehicleId} isEmbeddingsAvailable={isEmbeddingsAvailable} isAnsweringAvailable={isAnsweringAvailable} />}

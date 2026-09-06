@@ -20,6 +20,7 @@ public sealed class RecallRadarDbContext(DbContextOptions<RecallRadarDbContext> 
     public DbSet<InvestigationLink> InvestigationLinks => Set<InvestigationLink>();
     public DbSet<Answer> Answers => Set<Answer>();
     public DbSet<EvaluationRun> EvaluationRuns => Set<EvaluationRun>();
+    public DbSet<IngestJob> IngestJobs => Set<IngestJob>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +31,7 @@ public sealed class RecallRadarDbContext(DbContextOptions<RecallRadarDbContext> 
         ConfigureInvestigationLink(modelBuilder);
         ConfigureAnswer(modelBuilder);
         ConfigureEvaluationRun(modelBuilder);
+        ConfigureIngestJob(modelBuilder);
     }
 
     private static void ConfigureVehicle(ModelBuilder modelBuilder)
@@ -39,8 +41,23 @@ public sealed class RecallRadarDbContext(DbContextOptions<RecallRadarDbContext> 
         vehicle.Property(entity => entity.Make).HasMaxLength(64);
         vehicle.Property(entity => entity.NhtsaModel).HasMaxLength(64);
         vehicle.Property(entity => entity.DisplayName).HasMaxLength(128);
+        vehicle.Property(entity => entity.RecallModel).HasMaxLength(64);
         // One row per NHTSA identity, so re-running ingestion for the same truck is idempotent.
         vehicle.HasIndex(entity => new { entity.Make, entity.NhtsaModel, entity.ModelYear }).IsUnique();
+    }
+
+    private static void ConfigureIngestJob(ModelBuilder modelBuilder)
+    {
+        var job = modelBuilder.Entity<IngestJob>();
+        job.ToTable("ingest_jobs");
+        job.Property(entity => entity.Make).HasMaxLength(64);
+        job.Property(entity => entity.NhtsaModel).HasMaxLength(64);
+        job.Property(entity => entity.RecallModel).HasMaxLength(64);
+        job.Property(entity => entity.DisplayName).HasMaxLength(128);
+        job.Property(entity => entity.Message).HasMaxLength(IngestJob.MaximumMessageLength);
+        // The runner asks for the oldest waiting job, and the API asks for a vehicle's latest one.
+        job.HasIndex(entity => new { entity.State, entity.QueuedAt });
+        job.HasIndex(entity => new { entity.VehicleId, entity.QueuedAt });
     }
 
     private static void ConfigureSourceDocument(ModelBuilder modelBuilder)

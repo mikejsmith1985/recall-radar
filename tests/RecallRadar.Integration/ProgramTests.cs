@@ -49,5 +49,8 @@ public sealed class ProgramTests(PostgresFixture postgres)
 
     private WebApplicationFactory<Program> CreateFactory() =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-            builder.UseSetting(AppSettings.ConnectionConfigurationKey, postgres.ConnectionString));
+        {
+            builder.UseSetting(AppSettings.ConnectionConfigurationKey, postgres.ConnectionString);
+            builder.UseSetting(RunnerOff.Key, RunnerOff.Value);
+        });
 }

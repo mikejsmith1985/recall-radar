@@ -28,6 +28,12 @@ public static class UxFixtureSeeder
     /// <summary>A quote the recorded answer also offers, which appears in no record, so it is dropped.</summary>
     public const string FabricatedQuote = "the manufacturer confirmed this is a known safety defect";
 
+    /// <summary>The vehicle whose seeded load failed, so the suite can find that row specifically.</summary>
+    public const string FailedLoadVehicleName = "2014 F-150 SVT Raptor";
+
+    /// <summary>Why the seeded load failed. Shown in the table, so a silent failure is impossible.</summary>
+    public const string FailedLoadMessage = "NHTSA returned 500 for the recalls feed.";
+
     private static readonly (string ExternalId, string Component, string Body)[] Complaints =
     [
         ("11257832", Component,
@@ -61,6 +67,7 @@ public static class UxFixtureSeeder
         var investigationId = await SeedInvestigationAndRecallAsync(database, vehicle.Id, cancellationToken);
         await SeedInvestigationLinkAsync(database, investigationId, cancellationToken);
         await SeedEvaluationRunAsync(database, vehicle.Id, clock, cancellationToken);
+        await SeedLoadsAsync(database, vehicle.Id, clock, cancellationToken);
     }
 
     private static async Task SeedComplaintsAsync(
@@ -120,6 +127,32 @@ public static class UxFixtureSeeder
             """;
 
         database.EvaluationRuns.Add(EvaluationRun.Create(vehicleId, clock.GetUtcNow(), caseCount: 80, metrics));
+        await database.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// One load that worked and one that did not, so the browser suite can tell them apart. The
+    /// failure is a scheduled one: an overnight refresh failing silently is the case worth showing.
+    /// </summary>
+    private static async Task SeedLoadsAsync(
+        RecallRadarDbContext database, int vehicleId, TimeProvider clock, CancellationToken cancellationToken)
+    {
+        var queuedAt = clock.GetUtcNow().AddHours(-2);
+
+        var succeeded = IngestJob.Queue(
+            "FORD", "EXPLORER", null, 2013, VehicleDisplayName, IngestTrigger.Manual, queuedAt);
+        succeeded.Start(queuedAt.AddSeconds(1));
+        succeeded.Succeed(
+            vehicleId,
+            """{"complaintsNew":5,"recallsNew":1,"investigationsNew":1,"chunksCreated":7,"chunksEmbedded":0}""",
+            queuedAt.AddMinutes(3));
+
+        var failed = IngestJob.Queue(
+            "FORD", "EXPLORER", null, 2013, FailedLoadVehicleName, IngestTrigger.Scheduled, queuedAt.AddHours(1));
+        failed.Start(queuedAt.AddHours(1).AddSeconds(1));
+        failed.Fail(FailedLoadMessage, queuedAt.AddHours(1).AddSeconds(9));
+
+        database.IngestJobs.AddRange(succeeded, failed);
         await database.SaveChangesAsync(cancellationToken);
     }
 
