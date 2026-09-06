@@ -5,6 +5,11 @@ using RecallRadar.Api.Answering;
 using RecallRadar.Api.Config;
 using RecallRadar.Api.Endpoints;
 using RecallRadar.Api.Fixtures;
+using RecallRadar.Api.Loading;
+using RecallRadar.Ingest;
+using RecallRadar.Ingest.Commands;
+using RecallRadar.Ingest.Config;
+using RecallRadar.Ingest.Nhtsa;
 using RecallRadar.Retrieval.Embeddings;
 using RecallRadar.Retrieval.Evaluation;
 using RecallRadar.Retrieval.Persistence;
@@ -31,6 +36,24 @@ builder.Services.AddScoped<HybridSearchService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<GroundTruthBuilder>();
 builder.Services.AddScoped<EvaluationRunner>();
+
+// Loading a vehicle now happens here rather than only at a command line. The work runs in the
+// background because it reaches three NHTSA feeds and takes minutes; the request that asks for it
+// gets a job to watch instead of a timeout.
+builder.Services.Configure<IngestOptions>(builder.Configuration.GetSection(IngestOptions.SectionName));
+builder.Services.Configure<IngestRunnerOptions>(builder.Configuration.GetSection(IngestRunnerOptions.SectionName));
+builder.Services.Configure<ScheduledRefreshOptions>(builder.Configuration.GetSection(ScheduledRefreshOptions.SectionName));
+builder.Services.AddNhtsaClients();
+builder.Services.AddScoped<IngestService>();
+builder.Services.AddScoped<EmbedCommand>();
+builder.Services.AddScoped<IngestJobQueue>();
+
+// The browser fixture must not reach NHTSA, so neither background service runs there.
+if (!isBrowserFixture)
+{
+    builder.Services.AddHostedService<IngestJobRunner>();
+    builder.Services.AddHostedService<ScheduledRefreshService>();
+}
 
 if (isBrowserFixture)
 {
@@ -60,6 +83,7 @@ app.UseStaticFiles();
 
 app.MapHealthEndpoint();
 app.MapSearchEndpoints();
+app.MapVehicleEndpoints();
 app.MapAskEndpoints();
 app.MapEvalEndpoints();
 

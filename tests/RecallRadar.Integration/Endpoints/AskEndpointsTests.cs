@@ -6,6 +6,8 @@ using RecallRadar.Api.Config;
 using RecallRadar.Api.Endpoints;
 using RecallRadar.Retrieval.Persistence;
 
+using RecallRadar.Integration;
+
 namespace RecallRadar.Integration.Endpoints;
 
 [Collection(PostgresCollection.Name)]
@@ -106,6 +108,9 @@ public sealed class AskEndpointsTests(PostgresFixture postgres) : IAsyncLifetime
     private HttpClient CreateClient() =>
         new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
-                builder.UseSetting(AppSettings.ConnectionConfigurationKey, postgres.ConnectionString))
+            {
+                builder.UseSetting(AppSettings.ConnectionConfigurationKey, postgres.ConnectionString);
+                builder.UseSetting(RunnerOff.Key, RunnerOff.Value);
+            })
             .CreateClient();
 }

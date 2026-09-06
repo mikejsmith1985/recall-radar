@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using RecallRadar.Retrieval.Persistence;
 namespace RecallRadar.Retrieval.Persistence.Migrations
 {
     [DbContext(typeof(RecallRadarDbContext))]
-    partial class RecallRadarDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260906150133_IngestJobs")]
+    partial class IngestJobs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

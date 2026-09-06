@@ -17,13 +17,48 @@ Errors use RFC 9457 problem details (`application/problem+json`).
 
 ## POST /api/vehicles
 
-Request: `{ "make": "Ford", "modelYear": 2013, "displayName": "2013 Explorer Sport", "nhtsaModelNames": ["EXPLORER"] }`
+Request: `{ "make": "Ford", "nhtsaModel": "EXPLORER", "recallModel": null, "modelYear": 2013,
+"displayName": "2013 Explorer Sport" }`
 
-- `201` with the vehicle body above (counts all zero).
-- `400` problem when a model name is not in NHTSA's list for that make/year (detail names the valid options).
-- `409` problem when the vehicle already exists.
+`recallModel` is only needed where NHTSA's two feeds disagree: complaints are filed against a body
+style (`F-150 SUPER CREW`) and recalls answer that with 400, so a truck needs both names.
 
-Loading records is a CLI concern (`ingest`), not an API concern; see [cli.md](cli.md).
+A load reaches three NHTSA feeds and takes minutes, so the request cannot wait for it. The endpoint
+validates the model name against NHTSA's own list, queues the work and answers immediately.
+
+- `202` with a load body (below) and a `Location` of `/api/loads/{id}`. Asking twice for a vehicle
+  whose load is still running returns that same load rather than starting a second pass.
+- `400` problem when the registration could never be looked up, or when the model name is not in
+  NHTSA's list for that make and year — the detail names up to 20 valid options.
+- `503` problem when NHTSA's model list cannot be reached. The feed being down is not the caller's
+  mistake, so it is not a 400.
+
+## POST /api/vehicles/{id}/refresh
+
+Queues another pass over the feeds for a vehicle that already exists. Same `202` and same joining
+behaviour as above. `404` when the vehicle is unknown.
+
+## GET /api/loads/{id} · GET /api/loads
+
+One load, or the most recent 20, newest first.
+
+```json
+{
+  "id": 12, "vehicleId": 3, "displayName": "2013 Explorer Sport",
+  "state": "succeeded", "trigger": "manual", "isFinished": true,
+  "queuedAt": "2026-09-06T12:00:00Z", "startedAt": "2026-09-06T12:00:02Z",
+  "finishedAt": "2026-09-06T12:03:00Z", "message": null,
+  "report": { "complaintsNew": 2231, "recallsNew": 12, "investigationsNew": 6,
+              "chunksCreated": 2249, "chunksEmbedded": 2249 }
+}
+```
+
+`state` is `queued`, `running`, `succeeded` or `failed`; `trigger` is `manual` or `scheduled`.
+`message` carries the reason a load failed and is null otherwise — a load that vanished would be
+indistinguishable from one still running. `report` is null until a load succeeds, and keeps whatever
+shape the version that wrote it used. `404` for a load that does not exist.
+
+Loading is also available at the command line (`ingest`); see [cli.md](cli.md).
 
 ## GET /api/search
 

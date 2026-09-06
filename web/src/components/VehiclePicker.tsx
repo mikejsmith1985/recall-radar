@@ -17,7 +17,7 @@ export function VehiclePicker({ vehicles, selectedVehicleId, onSelect }: Vehicle
   if (vehicles.length === 0) {
     return (
       <p className="empty-state" data-testid="vehicle-picker-empty">
-        No vehicles loaded yet. Run <code>ingest --vehicle</code> to add one.
+        No vehicles yet. Add one below and its NHTSA records load in the background.
       </p>
     );
   }

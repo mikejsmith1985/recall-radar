@@ -29,10 +29,14 @@ describe("VehiclePicker", () => {
     expect(selected).toEqual([1]);
   });
 
-  it("explains how to load a vehicle when there are none", () => {
+  it("points at the form rather than a command line when there are no vehicles", () => {
+    // Adding a vehicle is something the app does now, so the empty state must not send someone
+    // to a terminal they may not have.
     render(<VehiclePicker vehicles={[]} selectedVehicleId={null} onSelect={() => undefined} />);
 
-    expect(screen.getByTestId("vehicle-picker-empty").textContent).toContain("No vehicles loaded yet");
+    const empty = screen.getByTestId("vehicle-picker-empty").textContent ?? "";
+    expect(empty).toContain("No vehicles yet");
+    expect(empty).not.toContain("ingest");
     expect(screen.queryByRole("radio")).toBeNull();
   });
 });

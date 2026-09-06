@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using RecallRadar.Api.Config;
 using RecallRadar.Api.Endpoints;
 
+using RecallRadar.Integration;
+
 namespace RecallRadar.Integration.Config;
 
 /// <summary>
@@ -69,6 +71,7 @@ public sealed class NoCredentialLeakTests(PostgresFixture postgres)
             .WithWebHostBuilder(builder =>
             {
                 builder.UseSetting(AppSettings.ConnectionConfigurationKey, postgres.ConnectionString);
+                builder.UseSetting(RunnerOff.Key, RunnerOff.Value);
                 builder.UseSetting(AppSettings.AnthropicKeyVariable, FakeAnthropicKey);
                 builder.UseSetting(AppSettings.VoyageKeyVariable, FakeVoyageKey);
                 builder.ConfigureServices(services =>

@@ -9,7 +9,7 @@ const vehicles: Vehicle[] = [
 
 function createClient(health: HealthReport, listVehicles: () => Promise<Vehicle[]>): ApiClient {
   const unsupported = () => Promise.reject(new Error("not used in this test"));
-  return { getHealth: () => Promise.resolve(health), listVehicles, search: unsupported, ask: unsupported, getDocument: unsupported, getEval: () => Promise.resolve({ latest: null, history: [] }) };
+  return { getHealth: () => Promise.resolve(health), listVehicles, search: unsupported, ask: unsupported, getDocument: unsupported, getEval: () => Promise.resolve({ latest: null, history: [] }), registerVehicle: unsupported, refreshVehicle: unsupported, getLoad: unsupported, listLoads: () => Promise.resolve([]) };
 }
 
 const healthy: HealthReport = { status: "ok", database: "ok", embeddings: "ok", answering: "ok" };

@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using RecallRadar.Api.Config;
 using RecallRadar.Api.Endpoints;
 
+using RecallRadar.Integration;
+
 namespace RecallRadar.Integration.Endpoints;
 
 [Collection(PostgresCollection.Name)]
@@ -57,5 +59,8 @@ public sealed class HealthEndpointsTests(PostgresFixture postgres)
 
     private static WebApplicationFactory<Program> CreateFactory(string connectionString) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-            builder.UseSetting(AppSettings.ConnectionConfigurationKey, connectionString));
+        {
+            builder.UseSetting(AppSettings.ConnectionConfigurationKey, connectionString);
+            builder.UseSetting(RunnerOff.Key, RunnerOff.Value);
+        });
 }

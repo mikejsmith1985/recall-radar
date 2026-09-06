@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RecallRadar.Retrieval\RecallRadar.Retrieval.csproj" />
+    <!-- The API loads vehicles itself now, so it needs the NHTSA clients the CLI already had. -->
+    <ProjectReference Include="..\RecallRadar.Ingest\RecallRadar.Ingest.csproj" />
   </ItemGroup>
 
   <ItemGroup>

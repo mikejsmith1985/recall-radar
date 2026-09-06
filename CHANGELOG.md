@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Vehicles can be added in the app. `POST /api/vehicles` validates the model name against NHTSA's
+  own list, then queues the load and answers 202 with somewhere to watch it: the work reaches three
+  feeds and takes minutes, so no request could wait for it. Asking twice joins the load already
+  running rather than starting a second pass over feeds that belong to somebody else.
+- A background runner takes one load at a time and records the outcome on the job either way. A
+  failure is stored with its reason rather than rethrown, because a job that vanished is
+  indistinguishable from one still running, and one bad registration must not stop every later load.
+- An optional daily refresh, off by default. It queues work rather than doing it, so a refresh goes
+  through the same runner, the same one-at-a-time discipline and the same job rows as a load someone
+  asked for. Staleness is measured from the last successful load, so a failing vehicle is retried on
+  the schedule rather than hammered.
+- The page shows a load's progress while it runs and the last few loads afterwards, marking a
+  scheduled refresh that failed. A refresh failing silently overnight is how records quietly go stale.
+
 - A second retrieval pool. `scope=campaigns` on `/api/search` ranks recalls and investigations
   alone, because a vehicle has thousands of complaints and a few dozen official records, and ranking
   them together hands every place to complaints. Measured on the loaded corpus, this takes recall@10

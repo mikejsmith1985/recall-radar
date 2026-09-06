@@ -87,10 +87,23 @@ as unverified — a retrieved record is a lead to read, a citation is a claim th
 ```bash
 cp .env.example .env          # fill in a local database password
 docker compose up -d          # PostgreSQL 17 with pgvector
-dotnet run --project src/RecallRadar.Ingest -- ingest --vehicle "2013 Explorer Sport"
-dotnet run --project src/RecallRadar.Ingest -- eval
 scripts/run-dev-clean.ps1     # the API and web client
 ```
+
+Add a vehicle in the app: give it a make, the model name NHTSA files records under, a year, and
+whatever you call it. The records load in the background and the page shows how far it has got. A
+model name NHTSA does not recognise is rejected with the names it does recognise, which is the
+mistake people actually make.
+
+The command line does the same work, and is still the right tool for a scripted load:
+
+```bash
+dotnet run --project src/RecallRadar.Ingest -- ingest --vehicle "2013 Explorer Sport"
+dotnet run --project src/RecallRadar.Ingest -- eval
+```
+
+Set `ScheduledRefresh:IsEnabled` to turn on a daily pass that picks up newly filed complaints. It is
+off by default, because a background process that reaches the internet should be opted into.
 
 Answering needs `ANTHROPIC_API_KEY`; dense retrieval needs `VOYAGE_API_KEY`. Without either, keyword
 search and every record stay fully available, and `/health` says which features are live.
