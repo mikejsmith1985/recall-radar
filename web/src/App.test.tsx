@@ -5,7 +5,7 @@ import type { ApiClient, HealthReport, Vehicle } from "./api/client";
 import { createStubClient } from "./api/stubClient";
 
 const vehicles: Vehicle[] = [
-  { id: 1, displayName: "2013 Explorer Sport", make: "FORD", modelYear: 2013, counts: { complaint: 2231, recall: 12, investigation: 4 } },
+  { id: 1, displayName: "2013 Explorer Sport", make: "FORD", modelYear: 2013, counts: { complaint: 2231, recall: 12, investigation: 4 }, trim: null },
 ];
 
 function createClient(health: HealthReport, listVehicles: () => Promise<Vehicle[]>): ApiClient {

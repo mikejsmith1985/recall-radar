@@ -74,6 +74,7 @@ public static class IngestHost
         // which one it got before touching the database, so a missing key fails with one clear line.
         builder.Services.AddEmbeddingGenerator(builder.Configuration);
         builder.Services.AddScoped<EmbedCommand>();
+        builder.Services.AddScoped<DecodeCommand>();
         return builder;
     }
 
@@ -161,6 +162,38 @@ public static class IngestHost
     /// The results file is written next to the repository rather than only printed, because the
     /// numbers are meant to be committed and compared, not read once and lost to scrollback.
     /// </remarks>
+    /// <summary>
+    /// Works out which trim and engine each stored complaint belongs to. Exit code 0 or 1.
+    /// </summary>
+    /// <remarks>
+    /// Separate from ingestion for the same reason embedding is: a load that reached three feeds
+    /// successfully should not be thrown away because a fourth service was slow. Running it again is
+    /// cheap, because every answer is remembered.
+    /// </remarks>
+    public static async Task<int> RunDecodeAsync(
+        IHost host, string? vehicleDisplayName, TextWriter stdout, TextWriter stderr, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        try
+        {
+            await using var scope = host.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<RecallRadarDbContext>().Database.MigrateAsync(cancellationToken);
+            var report = await scope.ServiceProvider.GetRequiredService<DecodeCommand>()
+                .DecodeAsync(vehicleDisplayName, cancellationToken);
+            foreach (var line in report.FormatLines())
+            {
+                await stdout.WriteLineAsync(line);
+            }
+
+            return SuccessExitCode;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            await stderr.WriteLineAsync($"{ErrorPrefix} {exception.Message}");
+            return FailureExitCode;
+        }
+    }
+
     public static async Task<int> RunEvalAsync(
         IHost host, TextWriter stdout, TextWriter stderr, CancellationToken cancellationToken)
     {

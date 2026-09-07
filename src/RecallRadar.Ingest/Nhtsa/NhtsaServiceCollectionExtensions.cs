@@ -17,7 +17,7 @@ public static class NhtsaServiceCollectionExtensions
     public static readonly TimeSpan AttemptTimeout = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan TotalTimeout = TimeSpan.FromMinutes(4);
 
-    /// <summary>Adds the four typed clients, each with its base address taken from <see cref="IngestOptions"/>.</summary>
+    /// <summary>Adds the typed clients, each with its base address taken from <see cref="IngestOptions"/>.</summary>
     public static IServiceCollection AddNhtsaClients(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -25,6 +25,7 @@ public static class NhtsaServiceCollectionExtensions
         services.AddHttpClient<NhtsaRecallsClient>(ConfigureApiClient).AddStandardResilienceHandler(ConfigureResilience);
         services.AddHttpClient<NhtsaModelsClient>(ConfigureApiClient).AddStandardResilienceHandler(ConfigureResilience);
         services.AddHttpClient<NhtsaFlatFileClient>().AddStandardResilienceHandler(ConfigureResilience);
+        services.AddHttpClient<VpicClient>(ConfigureVpicClient).AddStandardResilienceHandler(ConfigureResilience);
         return services;
     }
 
@@ -32,6 +33,13 @@ public static class NhtsaServiceCollectionExtensions
     {
         var options = provider.GetRequiredService<IOptions<IngestOptions>>().Value;
         client.BaseAddress = new Uri(options.NhtsaApiBaseUrl, UriKind.Absolute);
+    }
+
+    /// <summary>vPIC lives on its own host, so it takes its base address from its own setting.</summary>
+    private static void ConfigureVpicClient(IServiceProvider provider, HttpClient client)
+    {
+        var options = provider.GetRequiredService<IOptions<IngestOptions>>().Value;
+        client.BaseAddress = new Uri(options.VpicApiBaseUrl, UriKind.Absolute);
     }
 
     /// <summary>The circuit breaker's sampling window must be at least twice the attempt timeout, so it moves with it.</summary>

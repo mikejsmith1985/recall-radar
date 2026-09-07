@@ -21,6 +21,7 @@ public sealed class RecallRadarDbContext(DbContextOptions<RecallRadarDbContext> 
     public DbSet<Answer> Answers => Set<Answer>();
     public DbSet<EvaluationRun> EvaluationRuns => Set<EvaluationRun>();
     public DbSet<IngestJob> IngestJobs => Set<IngestJob>();
+    public DbSet<VinDecode> VinDecodes => Set<VinDecode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +33,7 @@ public sealed class RecallRadarDbContext(DbContextOptions<RecallRadarDbContext> 
         ConfigureAnswer(modelBuilder);
         ConfigureEvaluationRun(modelBuilder);
         ConfigureIngestJob(modelBuilder);
+        ConfigureVinDecode(modelBuilder);
     }
 
     private static void ConfigureVehicle(ModelBuilder modelBuilder)
@@ -42,6 +44,10 @@ public sealed class RecallRadarDbContext(DbContextOptions<RecallRadarDbContext> 
         vehicle.Property(entity => entity.NhtsaModel).HasMaxLength(64);
         vehicle.Property(entity => entity.DisplayName).HasMaxLength(128);
         vehicle.Property(entity => entity.RecallModel).HasMaxLength(64);
+        vehicle.Property(entity => entity.Vin).HasMaxLength(17);
+        vehicle.Property(entity => entity.Trim).HasMaxLength(64);
+        vehicle.Property(entity => entity.TrimKey).HasMaxLength(64);
+        vehicle.Property(entity => entity.EngineLitres).HasPrecision(4, 1);
         // One row per NHTSA identity, so re-running ingestion for the same truck is idempotent.
         vehicle.HasIndex(entity => new { entity.Make, entity.NhtsaModel, entity.ModelYear }).IsUnique();
     }
@@ -71,6 +77,25 @@ public sealed class RecallRadarDbContext(DbContextOptions<RecallRadarDbContext> 
         // The same recall campaign applies to both trucks, so uniqueness is per vehicle.
         document.HasIndex(entity => new { entity.VehicleId, entity.Kind, entity.ExternalId }).IsUnique();
         document.HasIndex(entity => new { entity.VehicleId, entity.Component });
+        document.Property(entity => entity.VinDescriptor).HasMaxLength(VinDecode.DescriptorLength);
+        document.Property(entity => entity.Trim).HasMaxLength(64);
+        document.Property(entity => entity.TrimKey).HasMaxLength(64);
+        document.Property(entity => entity.EngineLitres).HasPrecision(4, 1);
+        // Every trim-scoped search filters on these three, always alongside the vehicle.
+        document.HasIndex(entity => new { entity.VehicleId, entity.TrimKey, entity.EngineLitres, entity.EngineCylinders });
+    }
+
+    private static void ConfigureVinDecode(ModelBuilder modelBuilder)
+    {
+        var decode = modelBuilder.Entity<VinDecode>();
+        decode.ToTable("vin_decodes");
+        decode.Property(entity => entity.Descriptor).HasMaxLength(VinDecode.DescriptorLength);
+        decode.Property(entity => entity.Trim).HasMaxLength(64);
+        decode.Property(entity => entity.TrimKey).HasMaxLength(64);
+        decode.Property(entity => entity.EngineLitres).HasPrecision(4, 1);
+        // One answer per descriptor and year: vPIC decodes the same descriptor differently between
+        // model years, so the year is part of the question.
+        decode.HasIndex(entity => new { entity.Descriptor, entity.ModelYear }).IsUnique();
     }
 
     private static void ConfigureDocumentChunk(ModelBuilder modelBuilder)

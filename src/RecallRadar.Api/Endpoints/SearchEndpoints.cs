@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecallRadar.Retrieval.Embeddings;
 using RecallRadar.Retrieval.Persistence;
+using RecallRadar.Domain.Retrieval;
+using RecallRadar.Domain.Vehicles;
 using RecallRadar.Retrieval.Search;
 
 namespace RecallRadar.Api.Endpoints;
@@ -39,6 +41,9 @@ public static class SearchEndpoints
                 vehicle.DisplayName,
                 vehicle.Make,
                 vehicle.ModelYear,
+                vehicle.Trim,
+                vehicle.EngineLitres,
+                vehicle.EngineCylinders,
                 Counts = database.SourceDocuments
                     .Where(document => document.VehicleId == vehicle.Id)
                     .GroupBy(document => document.Kind)
@@ -55,11 +60,22 @@ public static class SearchEndpoints
             new RecordCounts(
                 CountOf(vehicle.Counts.ToDictionary(entry => entry.Kind, entry => entry.Count), SourceKind.Complaint),
                 CountOf(vehicle.Counts.ToDictionary(entry => entry.Kind, entry => entry.Count), SourceKind.Recall),
-                CountOf(vehicle.Counts.ToDictionary(entry => entry.Kind, entry => entry.Count), SourceKind.Investigation)))));
+                CountOf(vehicle.Counts.ToDictionary(entry => entry.Kind, entry => entry.Count), SourceKind.Investigation)),
+            DescribeFit(vehicle.Trim, vehicle.EngineLitres, vehicle.EngineCylinders))));
     }
 
     private static int CountOf(IReadOnlyDictionary<SourceKind, int> counts, SourceKind kind) =>
         counts.TryGetValue(kind, out var count) ? count : 0;
+
+    /// <summary>The version a vehicle is, or null when no VIN has said which one.</summary>
+    private static string? DescribeFit(string? trim, decimal? litres, int? cylinders)
+    {
+        var fit = VehicleFit.Create(trim, litres, cylinders);
+        return fit.IsKnown ? fit.Describe() : null;
+    }
+
+    /// <summary>Enum names go over the wire as the client writes them: thisTrim, not ThisTrim.</summary>
+    private static string ToCamelCase(string name) => char.ToLowerInvariant(name[0]) + name[1..];
 
     /// <summary>Runs one search. Validation problems, unknown vehicles and a missing embedding provider each get their own status.</summary>
     private static async Task<IResult> SearchAsync(
@@ -72,10 +88,11 @@ public static class SearchEndpoints
         [FromQuery] DateOnly? filedTo,
         [FromQuery] int? limit,
         [FromQuery] string? scope,
+        [FromQuery] string? trims,
         CancellationToken cancellationToken)
     {
         if (!SearchRequest.TryCreate(
-            vehicleId, q, mode, component, filedFrom, filedTo, limit, scope, out var request, out var problem))
+            vehicleId, q, mode, component, filedFrom, filedTo, limit, scope, trims, out var request, out var problem))
         {
             return Results.Problem(detail: problem, statusCode: StatusCodes.Status400BadRequest, title: InvalidRequestTitle);
         }
@@ -83,10 +100,18 @@ public static class SearchEndpoints
         try
         {
             var hits = await search.SearchAsync(request!, cancellationToken);
+
+            // Counted whichever scope ran, because the number means the same thing either way: how
+            // many of this vehicle's matching records belong to another version of the model. A
+            // field that meant "set aside" under one scope and nothing under the other would be a
+            // field nobody could read without knowing which scope produced it.
+            var otherTrims = await search.CountOtherTrimsAsync(request!, cancellationToken);
             return Results.Ok(new SearchResponse(
                 request!.Mode.ToString().ToLowerInvariant(),
                 [.. hits.Select(HitResponse.From)],
-                request.Scope.ToString().ToLowerInvariant()));
+                request.Scope.ToString().ToLowerInvariant(),
+                ToCamelCase(request.Trims.ToString()),
+                otherTrims));
         }
         catch (VehicleNotFoundException notFound)
         {
@@ -117,7 +142,8 @@ public static class SearchEndpoints
 public sealed record RecordCounts(int Complaint, int Recall, int Investigation);
 
 /// <summary>A vehicle as the client lists it.</summary>
-public sealed record VehicleResponse(int Id, string DisplayName, string Make, int ModelYear, RecordCounts Counts);
+public sealed record VehicleResponse(
+    int Id, string DisplayName, string Make, int ModelYear, RecordCounts Counts, string? Trim);
 
 /// <summary>One hit, with the ranks that explain its position.</summary>
 public sealed record HitResponse(
@@ -131,7 +157,8 @@ public sealed record HitResponse(
     string Snippet,
     int? DenseRank,
     int? SparseRank,
-    double FusedScore)
+    double FusedScore,
+    string? Trim)
 {
     /// <summary>Number of decimal places kept in the fused score; more would suggest false precision.</summary>
     public const int ScoreDecimals = 5;
@@ -151,10 +178,18 @@ public sealed record HitResponse(
             hit.Snippet,
             hit.Explanation.DenseRank,
             hit.Explanation.SparseRank,
-            Math.Round(hit.Explanation.FusedScore, ScoreDecimals));
+            Math.Round(hit.Explanation.FusedScore, ScoreDecimals),
+            // Null when nothing decoded it, which the client shows as "trim not decoded" rather
+            // than pretending the record belongs to the vehicle being asked about.
+            hit.Fit.IsKnown ? hit.Fit.Describe() : null);
     }
 }
 
-/// <summary>The search response: the mode that actually ran, and the hits.</summary>
 /// <summary>One page of hits, naming the mode and the pool they were ranked within.</summary>
-public sealed record SearchResponse(string Mode, IReadOnlyList<HitResponse> Hits, string Scope);
+/// <summary>
+/// One search, and what it left out. <c>otherTrims</c> is how many of this vehicle's records belong
+/// to a different version of the model, so the page can offer the wider search rather than showing
+/// an empty result and leaving somebody to wonder whether the data is missing.
+/// </summary>
+public sealed record SearchResponse(
+    string Mode, IReadOnlyList<HitResponse> Hits, string Scope, string Trims, int OtherTrims);

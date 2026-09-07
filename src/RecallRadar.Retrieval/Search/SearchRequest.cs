@@ -15,6 +15,7 @@ namespace RecallRadar.Retrieval.Search;
 /// <param name="FiledTo">Optional latest filing date, inclusive.</param>
 /// <param name="Limit">How many hits to return.</param>
 /// <param name="Scope">Which pool of records may be returned.</param>
+/// <param name="Trims">Whether records from other trims and engines may be returned.</param>
 public sealed record SearchRequest(
     int VehicleId,
     string Query,
@@ -23,7 +24,8 @@ public sealed record SearchRequest(
     DateOnly? FiledFrom,
     DateOnly? FiledTo,
     int Limit,
-    RetrievalScope Scope)
+    RetrievalScope Scope,
+    TrimScope Trims)
 {
     public const int MinimumQueryLength = 2;
     public const int MaximumQueryLength = 500;
@@ -35,6 +37,12 @@ public sealed record SearchRequest(
 
     /// <summary>What an unnamed scope means: every record, which is what search did before pools existed.</summary>
     public const RetrievalScope DefaultScope = RetrievalScope.All;
+
+    /// <summary>
+    /// What an unnamed trim scope means. Every trim, because narrowing is only honest once the
+    /// vehicle's own VIN has been decoded, and the caller is the one who knows whether it has.
+    /// </summary>
+    public const TrimScope DefaultTrims = TrimScope.AllTrims;
 
     /// <summary>How many candidates each method contributes before fusion. Fifty per the research note.</summary>
     public const int CandidateWindow = 50;
@@ -55,10 +63,7 @@ public sealed record SearchRequest(
         out string? problem) =>
         TryCreate(vehicleId, query, mode, component, filedFrom, filedTo, limit, null, out request, out problem);
 
-    /// <summary>
-    /// Builds a request for a named pool of records. Separate from the seven-argument overload so
-    /// that every existing caller keeps searching everything, which is what it used to do.
-    /// </summary>
+    /// <summary>Builds a request for a named pool, leaving every trim in scope.</summary>
     public static bool TryCreate(
         int vehicleId,
         string? query,
@@ -69,10 +74,29 @@ public sealed record SearchRequest(
         int? limit,
         string? scope,
         out SearchRequest? request,
+        out string? problem) =>
+        TryCreate(vehicleId, query, mode, component, filedFrom, filedTo, limit, scope, null, out request, out problem);
+
+    /// <summary>
+    /// Builds a request for a named pool of records and a named trim scope. Separate from the
+    /// shorter overloads so that every existing caller keeps searching everything, which is what it
+    /// used to do.
+    /// </summary>
+    public static bool TryCreate(
+        int vehicleId,
+        string? query,
+        string? mode,
+        string? component,
+        DateOnly? filedFrom,
+        DateOnly? filedTo,
+        int? limit,
+        string? scope,
+        string? trims,
+        out SearchRequest? request,
         out string? problem)
     {
         request = null;
-        problem = FindProblem(query, mode, filedFrom, filedTo, limit, scope);
+        problem = FindProblem(query, mode, filedFrom, filedTo, limit, scope, trims);
         if (problem is not null)
         {
             return false;
@@ -86,7 +110,8 @@ public sealed record SearchRequest(
             filedFrom,
             filedTo,
             limit ?? DefaultLimit,
-            ResolveScope(scope)!.Value);
+            ResolveScope(scope)!.Value,
+            ResolveTrims(trims)!.Value);
         return true;
     }
 
@@ -98,8 +123,12 @@ public sealed record SearchRequest(
     private static RetrievalScope? ResolveScope(string? scope) =>
         string.IsNullOrWhiteSpace(scope) ? DefaultScope : RetrievalScopes.TryParse(scope);
 
+    /// <summary>An absent trim scope means every trim; a named one must be one we know.</summary>
+    private static TrimScope? ResolveTrims(string? trims) =>
+        string.IsNullOrWhiteSpace(trims) ? DefaultTrims : TrimScopes.TryParse(trims);
+
     private static string? FindProblem(
-        string? query, string? mode, DateOnly? filedFrom, DateOnly? filedTo, int? limit, string? scope)
+        string? query, string? mode, DateOnly? filedFrom, DateOnly? filedTo, int? limit, string? scope, string? trims)
     {
         var trimmed = query?.Trim() ?? string.Empty;
         if (trimmed.Length is < MinimumQueryLength or > MaximumQueryLength)
@@ -115,6 +144,11 @@ public sealed record SearchRequest(
         if (ResolveScope(scope) is null)
         {
             return $"Unknown scope '{scope}'. Use all or campaigns.";
+        }
+
+        if (ResolveTrims(trims) is null)
+        {
+            return $"Unknown trims '{trims}'. Use thisTrim or allTrims.";
         }
 
         if (limit is < 1 or > MaximumLimit)

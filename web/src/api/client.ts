@@ -25,7 +25,12 @@ export interface Vehicle {
   make: string;
   modelYear: number;
   counts: VehicleCounts;
+  /** What this vehicle's VIN decoded to, or null when no VIN was given. */
+  trim: string | null;
 }
+
+/** Whether a search stays with the vehicle's own trim and engine, or opens to every version. */
+export type TrimScope = "thisTrim" | "allTrims";
 
 export interface SearchParams {
   vehicleId: number;
@@ -35,6 +40,7 @@ export interface SearchParams {
   filedFrom?: string;
   filedTo?: string;
   limit?: number;
+  trims?: TrimScope;
 }
 
 export interface SearchHit {
@@ -49,12 +55,17 @@ export interface SearchHit {
   denseRank: number | null;
   sparseRank: number | null;
   fusedScore: number;
+  /** The version of the model this record was filed under, or null when nothing decoded it. */
+  trim: string | null;
 }
 
 export interface SearchResponse {
   mode: RetrievalMode;
   hits: SearchHit[];
   scope: RetrievalScope;
+  trims: TrimScope;
+  /** How many of this vehicle's matching records belong to a different trim or engine. */
+  otherTrims: number;
 }
 
 export interface AskRequest {
@@ -206,6 +217,8 @@ export interface RegisterVehicleRequest {
   recallModel?: string | null;
   modelYear: number;
   displayName: string;
+  /** Optional. The only thing that says which version of the model this is. */
+  vin?: string | null;
 }
 
 export interface ApiClient {
@@ -242,6 +255,9 @@ export function buildSearchQuery(params: SearchParams): string {
   }
   if (params.filedTo) {
     query.set("filedTo", params.filedTo);
+  }
+  if (params.trims) {
+    query.set("trims", params.trims);
   }
   if (params.limit !== undefined) {
     query.set("limit", String(params.limit));

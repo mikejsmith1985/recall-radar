@@ -1,4 +1,6 @@
 // A vehicle the contributor owns, named the way NHTSA names it so ingestion can query by it.
+using RecallRadar.Domain.Vehicles;
+
 namespace RecallRadar.Retrieval.Persistence;
 
 /// <summary>
@@ -25,6 +27,22 @@ public sealed class Vehicle
     /// </summary>
     public string? RecallModel { get; private set; }
 
+    /// <summary>
+    /// The owner's VIN, when they gave one. It is the only thing that says which of the versions
+    /// filed under one NHTSA model name this vehicle actually is.
+    /// </summary>
+    public string? Vin { get; private set; }
+
+    public string? Trim { get; private set; }
+
+    /// <summary>The trim normalised for comparison. Written whenever the trim is.</summary>
+    public string? TrimKey { get; private set; }
+    public decimal? EngineLitres { get; private set; }
+    public int? EngineCylinders { get; private set; }
+
+    /// <summary>This vehicle's own trim and engine, as far as its VIN has been decoded.</summary>
+    public VehicleFit Fit => VehicleFit.Create(Trim, EngineLitres, EngineCylinders);
+
     private Vehicle() { }
 
     /// <summary>
@@ -32,7 +50,7 @@ public sealed class Vehicle
     /// returns them that way and every later comparison relies on an exact match.
     /// </summary>
     public static Vehicle Create(
-        string make, string nhtsaModel, int modelYear, string displayName, string? recallModel = null)
+        string make, string nhtsaModel, int modelYear, string displayName, string? recallModel = null, string? vin = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(make);
         ArgumentException.ThrowIfNullOrWhiteSpace(nhtsaModel);
@@ -49,6 +67,24 @@ public sealed class Vehicle
             ModelYear = modelYear,
             DisplayName = displayName.Trim(),
             RecallModel = string.IsNullOrWhiteSpace(recallModel) ? null : recallModel.Trim().ToUpperInvariant(),
+            Vin = NormaliseVin(vin),
         };
     }
+
+    /// <summary>Records what the owner's VIN decoded to, so records can be matched against it.</summary>
+    public void DescribeFit(VehicleFit fit)
+    {
+        ArgumentNullException.ThrowIfNull(fit);
+        Trim = fit.Trim;
+        TrimKey = fit.TrimKey;
+        EngineLitres = fit.EngineLitres;
+        EngineCylinders = fit.EngineCylinders;
+    }
+
+    /// <summary>Sets the VIN on a vehicle registered before one was given.</summary>
+    public void RecordVin(string? vin) => Vin = NormaliseVin(vin);
+
+    /// <summary>A VIN is upper case with no spaces, because every comparison relies on an exact match.</summary>
+    private static string? NormaliseVin(string? vin) =>
+        string.IsNullOrWhiteSpace(vin) ? null : vin.Trim().ToUpperInvariant();
 }

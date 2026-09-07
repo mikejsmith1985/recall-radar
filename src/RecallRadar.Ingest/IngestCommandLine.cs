@@ -1,4 +1,4 @@
-// Defines the `ingest`, `embed` and `eval` verbs and parses their options.
+// Defines the `ingest`, `embed`, `eval` and `decode` verbs and parses their options.
 using System.CommandLine;
 using Microsoft.Extensions.Hosting;
 
@@ -13,6 +13,7 @@ public static class IngestCommandLine
     public const string IngestVerb = "ingest";
     public const string EmbedVerb = "embed";
     public const string EvalVerb = "eval";
+    public const string DecodeVerb = "decode";
     public const string VehicleOptionName = "--vehicle";
     private const int NotImplementedExitCode = 1;
 
@@ -20,19 +21,23 @@ public static class IngestCommandLine
     /// <param name="runIngest">Loads one vehicle's NHTSA records.</param>
     /// <param name="runEmbed">Back-fills embeddings; the vehicle name is optional, so it may be null.</param>
     /// <param name="runEval">Scores retrieval against derived ground truth.</param>
+    /// <param name="runDecode">Works out each complaint's trim and engine; the vehicle name is optional.</param>
     public static RootCommand Build(
         Func<string, CancellationToken, Task<int>> runIngest,
         Func<string?, CancellationToken, Task<int>> runEmbed,
-        Func<CancellationToken, Task<int>> runEval)
+        Func<CancellationToken, Task<int>> runEval,
+        Func<string?, CancellationToken, Task<int>> runDecode)
     {
         ArgumentNullException.ThrowIfNull(runIngest);
         ArgumentNullException.ThrowIfNull(runEmbed);
         ArgumentNullException.ThrowIfNull(runEval);
+        ArgumentNullException.ThrowIfNull(runDecode);
 
         var root = new RootCommand("Recall Radar ingestion, embedding and evaluation.");
         root.Subcommands.Add(BuildIngestCommand(runIngest));
         root.Subcommands.Add(BuildEmbedCommand(runEmbed));
         root.Subcommands.Add(BuildEvalCommand(runEval));
+        root.Subcommands.Add(BuildDecodeCommand(runDecode));
         return root;
     }
 
@@ -52,7 +57,9 @@ public static class IngestCommandLine
             (vehicle, cancellationToken) => RunInHostAsync(
                 host => IngestHost.RunEmbedAsync(host, vehicle, stdout, stderr, cancellationToken), configureHost),
             cancellationToken => RunInHostAsync(
-                host => IngestHost.RunEvalAsync(host, stdout, stderr, cancellationToken), configureHost));
+                host => IngestHost.RunEvalAsync(host, stdout, stderr, cancellationToken), configureHost),
+            (vehicle, cancellationToken) => RunInHostAsync(
+                host => IngestHost.RunDecodeAsync(host, vehicle, stdout, stderr, cancellationToken), configureHost));
         return root.Parse(args).InvokeAsync();
     }
 
@@ -74,6 +81,18 @@ public static class IngestCommandLine
         command.Options.Add(vehicleOption);
         command.SetAction((parseResult, cancellationToken) =>
             runEmbed(parseResult.GetValue(vehicleOption), cancellationToken));
+        return command;
+    }
+
+    /// <summary>The vehicle is optional here: with none given, every stored complaint is decoded.</summary>
+    private static Command BuildDecodeCommand(Func<string?, CancellationToken, Task<int>> runDecode)
+    {
+        var vehicleOption = BuildVehicleOption(required: false);
+        var command = new Command(
+            DecodeVerb, "Work out the trim and engine each stored complaint belongs to, from its VIN.");
+        command.Options.Add(vehicleOption);
+        command.SetAction((parseResult, cancellationToken) =>
+            runDecode(parseResult.GetValue(vehicleOption), cancellationToken));
         return command;
     }
 

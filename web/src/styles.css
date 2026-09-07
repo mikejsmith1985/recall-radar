@@ -583,6 +583,56 @@ button {
   font-size: var(--text-sm);
 }
 
+/* The trim switch sits under the mode switch: both narrow what a search may return, and reading
+   them as one row is how somebody sees that they are two separate narrowings. */
+.trim-switch {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+
+.trim-switch [role="radiogroup"] {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.trim-switch button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.trim-switch button:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.trim-switch button[aria-checked="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.trim-switch .caption {
+  margin: 0;
+}
+
+/* Which version a record was filed under. Quiet, until a widened search makes it the thing being
+   read, so it sits below the identifiers rather than beside the title. */
+.trim-badge {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .result-list {
   list-style: none;
   padding: 0;

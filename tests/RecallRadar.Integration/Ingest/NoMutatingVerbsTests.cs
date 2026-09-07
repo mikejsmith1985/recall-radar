@@ -46,7 +46,9 @@ public sealed class NoMutatingVerbsTests
             .Where(type => type.Namespace == typeof(NhtsaComplaintsClient).Namespace && type.Name.EndsWith(ClientSuffix, StringComparison.Ordinal))
             .ToList();
 
-        Assert.Equal(4, clientTypes.Count);
+        // Complaints, recalls, models, the flat file and vPIC. Asserted so a client added without
+        // being considered here fails rather than slipping past the check below unnoticed.
+        Assert.Equal(5, clientTypes.Count);
 
         foreach (var type in clientTypes)
         {

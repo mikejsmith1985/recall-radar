@@ -24,4 +24,12 @@ public sealed class RetrievalScopeTests
     {
         Assert.Null(RetrievalScopes.TryParse(text));
     }
+
+    [Fact]
+    public void DoesNotAcceptTheNumberBehindAName()
+    {
+        // Enum.TryParse also accepts the underlying number, which would make "1" a silent alias
+        // for the first member: an input the contract never documented.
+        Assert.Null(RetrievalScopes.TryParse("1"));
+    }
 }

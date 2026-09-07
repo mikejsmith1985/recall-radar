@@ -27,6 +27,12 @@ public sealed class IngestRunnerOptions
 
     /// <summary>Whether a successful load also back-fills embeddings. Off leaves keyword search working.</summary>
     public bool EmbedAfterLoad { get; init; } = true;
+
+    /// <summary>
+    /// Whether a successful load also works out which trim and engine each complaint belongs to.
+    /// Off leaves every record in scope, which is what search did before trims existed.
+    /// </summary>
+    public bool DecodeAfterLoad { get; init; } = true;
 }
 
 /// <summary>
@@ -102,6 +108,7 @@ public sealed class IngestJobRunner(
             var report = await services.GetRequiredService<IngestService>()
                 .IngestAsync(ToRegistration(job), stoppingToken);
             var vehicleId = await FindVehicleIdAsync(services, job, stoppingToken);
+            await TryDecodeAsync(services, job, stoppingToken);
             var embedded = await TryEmbedAsync(services, job, stoppingToken);
 
             job.Succeed(vehicleId, Describe(report, embedded), clock.GetUtcNow());
@@ -145,6 +152,32 @@ public sealed class IngestJobRunner(
         {
             logger.LogInformation("Loaded {Vehicle} without embeddings: {Reason}", job.DisplayName, failure.Message);
             return 0;
+        }
+    }
+
+    /// <summary>
+    /// Works out the trim and engine of what was just loaded.
+    /// </summary>
+    /// <remarks>
+    /// Never fails the load. The records are stored and searchable either way; without a decode they
+    /// simply cannot be narrowed to one version of the model, which is where search was before.
+    /// </remarks>
+    private async Task TryDecodeAsync(IServiceProvider services, IngestJob job, CancellationToken stoppingToken)
+    {
+        if (!options.Value.DecodeAfterLoad)
+        {
+            return;
+        }
+
+        try
+        {
+            var report = await services.GetRequiredService<DecodeCommand>().DecodeAsync(job.DisplayName, stoppingToken);
+            logger.LogInformation(
+                "Decoded {Described} complaints for {Vehicle}.", report.ComplaintsDescribed, job.DisplayName);
+        }
+        catch (Exception failure) when (failure is not OperationCanceledException)
+        {
+            logger.LogWarning(failure, "Could not decode trims for {Vehicle}; every trim stays in scope.", job.DisplayName);
         }
     }
 

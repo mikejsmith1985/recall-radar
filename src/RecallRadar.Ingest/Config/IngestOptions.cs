@@ -23,6 +23,12 @@ public sealed class VehicleRegistration
     public int ModelYear { get; init; }
     public string DisplayName { get; init; } = string.Empty;
 
+    /// <summary>
+    /// The owner's VIN, when they gave one. NHTSA files every version of a model under one name, so
+    /// this is the only thing that says which version this vehicle actually is.
+    /// </summary>
+    public string? Vin { get; init; }
+
     /// <summary>The model name to send to the recalls feed.</summary>
     public string ResolveRecallModel() => string.IsNullOrWhiteSpace(RecallModel) ? NhtsaModel : RecallModel.Trim();
 
@@ -51,8 +57,12 @@ public sealed class IngestOptions
     public const string DefaultNhtsaApiBaseUrl = "https://api.nhtsa.gov/";
     public const string DefaultInvestigationsFlatFileUrl = "https://static.nhtsa.gov/odi/ffdd/inv/FLAT_INV.zip";
 
+    /// <summary>vPIC is NHTSA's product catalogue and the only decoder of VINs. A separate service.</summary>
+    public const string DefaultVpicApiBaseUrl = "https://vpic.nhtsa.dot.gov/api/";
+
     public string NhtsaApiBaseUrl { get; init; } = DefaultNhtsaApiBaseUrl;
     public string InvestigationsFlatFileUrl { get; init; } = DefaultInvestigationsFlatFileUrl;
+    public string VpicApiBaseUrl { get; init; } = DefaultVpicApiBaseUrl;
     public List<VehicleRegistration> Vehicles { get; init; } = [];
 
     /// <summary>Finds a registered vehicle by the name the owner uses for it, ignoring case and padding.</summary>

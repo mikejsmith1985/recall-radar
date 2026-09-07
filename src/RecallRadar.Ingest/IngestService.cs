@@ -91,12 +91,22 @@ public sealed class IngestService(
 
     private async Task<Vehicle> UpsertVehicleAsync(VehicleRegistration registration, CancellationToken cancellationToken)
     {
-        var candidate = Vehicle.Create(registration.Make, registration.NhtsaModel, registration.ModelYear, registration.DisplayName);
+        var candidate = Vehicle.Create(
+            registration.Make, registration.NhtsaModel, registration.ModelYear, registration.DisplayName,
+            registration.RecallModel, registration.Vin);
         var existing = await database.Vehicles.SingleOrDefaultAsync(
             vehicle => vehicle.Make == candidate.Make && vehicle.NhtsaModel == candidate.NhtsaModel && vehicle.ModelYear == candidate.ModelYear,
             cancellationToken);
         if (existing is not null)
         {
+            // A vehicle registered before VINs existed gains one on the next load rather than
+            // needing to be removed and added again.
+            if (existing.Vin is null && registration.Vin is not null)
+            {
+                existing.RecordVin(registration.Vin);
+                await database.SaveChangesAsync(cancellationToken);
+            }
+
             return existing;
         }
 
