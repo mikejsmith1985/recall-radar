@@ -22,6 +22,22 @@ describe("SearchPage", () => {
     expect(screen.getByTestId("search-needs-vehicle")).toBeTruthy();
   });
 
+  it("says what the page is for before anybody has searched", () => {
+    render(<SearchPage client={createClient(() => Promise.reject(new Error()))} vehicleId={7} isEmbeddingsAvailable />);
+
+    expect(screen.getByTestId("search-invitation")).toBeTruthy();
+  });
+
+  it("stops inviting once there are results to read", async () => {
+    const client = createClient((params) => Promise.resolve({ mode: params.mode, hits: [hit], scope: "all" as const }));
+    render(<SearchPage client={client} vehicleId={7} isEmbeddingsAvailable />);
+
+    submitQuery("steering locks");
+
+    await screen.findByTestId("result-card");
+    expect(screen.queryByTestId("search-invitation")).toBeNull();
+  });
+
   it("searches the selected vehicle in combined mode and lists the hits", async () => {
     const requests: SearchParams[] = [];
     const client = createClient((params) => {

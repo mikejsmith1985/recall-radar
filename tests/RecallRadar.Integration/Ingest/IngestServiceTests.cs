@@ -12,6 +12,12 @@ public sealed class IngestServiceTests(PostgresFixture postgres) : IDisposable
     private const string ExplorerName = "2012 Explorer (fixture)";
     private const string FailingName = "2013 Taurus (failing fixture)";
     private const string FailingModel = "TAURUS";
+    private const int FailingModelYear = 2013;
+    // A different model year, because the fixture's models list holds only EXPLORER and TAURUS and
+    // vehicle identity is make plus model plus year.
+    private const string NoRecallsName = "2014 Taurus (no recalls fixture)";
+    private const string NoRecallsModel = "TAURUS";
+    private const int NoRecallsModelYear = 2014;
 
     private readonly NhtsaFixtureServer _nhtsa = new();
 
@@ -60,7 +66,35 @@ public sealed class IngestServiceTests(PostgresFixture postgres) : IDisposable
         Assert.Equal(1, result.ExitCode);
         Assert.StartsWith(IngestHost.ErrorPrefix, result.Stderr.Trim());
         await using var context = postgres.CreateContext();
-        Assert.False(await context.Vehicles.AnyAsync(entity => entity.NhtsaModel == FailingModel, TestContext.Current.CancellationToken));
+        // Scoped to the year as well as the model: the container is shared, and another test in
+        // this class loads the same model in a different year.
+        Assert.False(await context.Vehicles.AnyAsync(
+            entity => entity.NhtsaModel == FailingModel && entity.ModelYear == FailingModelYear,
+            TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Ingest_WhenTheVehicleHasNoRecalls_LoadsEverythingElseAndSaysZero()
+    {
+        // NHTSA answers "no recalls" with status 400 and a body saying everything went fine, so a
+        // 2026 Mach-E whose complaints came back perfectly well failed its whole load.
+        _nhtsa.ReturnNoRecallsFor(NoRecallsModel);
+
+        var result = await RunIngestAsync(NoRecallsName);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("recalls: fetched 0, new 0, unchanged 0", result.Stdout);
+        Assert.Contains("complaints: fetched 6, new 5", result.Stdout);
+        await using var context = postgres.CreateContext();
+        var vehicle = await context.Vehicles.SingleAsync(
+            entity => entity.NhtsaModel == NoRecallsModel && entity.ModelYear == NoRecallsModelYear,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(5, await context.SourceDocuments.CountAsync(
+            entity => entity.VehicleId == vehicle.Id && entity.Kind == SourceKind.Complaint,
+            TestContext.Current.CancellationToken));
+        Assert.Equal(0, await context.SourceDocuments.CountAsync(
+            entity => entity.VehicleId == vehicle.Id && entity.Kind == SourceKind.Recall,
+            TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -96,7 +130,11 @@ public sealed class IngestServiceTests(PostgresFixture postgres) : IDisposable
         ["RecallRadar:Vehicles:0:DisplayName"] = ExplorerName,
         ["RecallRadar:Vehicles:1:Make"] = "FORD",
         ["RecallRadar:Vehicles:1:NhtsaModel"] = FailingModel,
-        ["RecallRadar:Vehicles:1:ModelYear"] = "2013",
+        ["RecallRadar:Vehicles:1:ModelYear"] = FailingModelYear.ToString(),
         ["RecallRadar:Vehicles:1:DisplayName"] = FailingName,
+        ["RecallRadar:Vehicles:2:Make"] = "FORD",
+        ["RecallRadar:Vehicles:2:NhtsaModel"] = NoRecallsModel,
+        ["RecallRadar:Vehicles:2:ModelYear"] = NoRecallsModelYear.ToString(),
+        ["RecallRadar:Vehicles:2:DisplayName"] = NoRecallsName,
     };
 }

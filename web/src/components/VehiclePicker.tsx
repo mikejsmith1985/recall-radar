@@ -8,9 +8,18 @@ interface VehiclePickerProps {
   onSelect: (vehicleId: number) => void;
 }
 
-function formatCounts(vehicle: Vehicle): string {
+/** "1 complaint", not "1 complaints". A car new enough to have one of something is not a rare case. */
+export function pluralise(count: number, singular: string): string {
+  return `${count} ${count === 1 ? singular : `${singular}s`}`;
+}
+
+export function formatCounts(vehicle: Vehicle): string {
   const { complaint, recall, investigation } = vehicle.counts;
-  return `${complaint} complaints · ${recall} recalls · ${investigation} investigations`;
+  return [
+    pluralise(complaint, "complaint"),
+    pluralise(recall, "recall"),
+    pluralise(investigation, "investigation"),
+  ].join(" · ");
 }
 
 export function VehiclePicker({ vehicles, selectedVehicleId, onSelect }: VehiclePickerProps) {

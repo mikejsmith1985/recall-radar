@@ -16,6 +16,13 @@ interface AskPageProps {
 }
 
 export const SelectVehiclePrompt = "Pick a vehicle above before asking about a symptom.";
+
+/**
+ * Shown before the first question. It states the guarantee, because that is what separates this
+ * from a chat window: nothing is asserted that is not quoted from a record you can open.
+ */
+export const AskInvitation =
+  "Describe the symptom the way you would to a mechanic. The answer cites complaints, recalls and investigations by name, and every quote is checked word for word against the record it came from before you see it.";
 export const AnsweringUnavailableMessage =
   "Answering is off: no Anthropic key is configured. Search still works in the Search tab.";
 
@@ -73,6 +80,9 @@ export function AskPage({ client, vehicleId, isEmbeddingsAvailable, isAnsweringA
         onSubmit={(question) => void ask(question)}
       />
       {errorMessage && <p className="error-state" data-testid="ask-error">{errorMessage}</p>}
+      {!response && !errorMessage && (
+        <p className="empty-state" data-testid="ask-invitation">{AskInvitation}</p>
+      )}
       {response && (
         <>
           <AnswerPanel response={response} onOpenCitation={(citation) => void openCitation(citation)} />

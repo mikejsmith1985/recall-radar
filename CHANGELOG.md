@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A design system: colour, spacing, type and radius tokens that every component draws from, a dark
+  theme that follows the operating system, one keyboard-only focus ring, and motion that anybody who
+  has asked for less of it does not get. Three classes the markup already used had no rules at all,
+  which is why the add-vehicle form rendered as raw browser controls.
+- The header says what the application is, and the search and ask pages say what they are for before
+  anybody has typed anything, rather than showing blank space.
+- The vehicle list holds its space while it loads. Rendering "no vehicles yet" first and the cards
+  second moved the button underneath at the moment somebody was clicking it.
 - The add-vehicle form offers NHTSA's own model names for the make and year entered, through a new
   `GET /api/nhtsa/models`. Their vocabulary is not the one on the car — a Mach-E is filed as
   `MUSTANG MACH-E BEV BEV` — and Ford alone has 57 names for one model year. Losing the list does
@@ -31,6 +39,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   seven test files.
 
 ### Fixed
+- A vehicle with no recalls loads instead of failing. NHTSA answers "nothing found" from the recalls
+  feed with status 400 and a body reading `Results returned successfully`, so a 2026 Mach-E whose
+  complaints came back perfectly well failed its whole load. Only a parseable envelope carrying an
+  empty `results` array is read that way: an error page that happens to be JSON has no array at all,
+  and absent is not empty.
+- A failed load says something the person who asked for the car can act on. What reached a user was
+  "Response status code does not indicate success: 400 (Bad Request).", which offers nothing to do
+  next. The original text is kept on the end, because the sentence is a translation, not a
+  replacement.
+- Recent loads show a date rather than the wire format. The server sends ISO 8601 with microseconds
+  and an offset, which is right on the wire and unreadable in a table.
 - `/health` reports a database that is behind this build as `schema-outdated` rather than `ok`. It
   had only asked whether the database could be reached, which is not the same as whether it can be
   used, so the first sign of a missing table was `Internal Server Error` in the browser. The page

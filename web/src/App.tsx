@@ -40,10 +40,12 @@ export function App({ client }: AppProps) {
   const [view, setView] = useState<View>("search");
   const [health, setHealth] = useState<HealthReport>(OfflineHealth);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [hasAnsweredVehicles, setHasAnsweredVehicles] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeLoad, setActiveLoad] = useState<Load | null>(null);
   const [vehiclesVersion, setVehiclesVersion] = useState(0);
+  const [isAddingVehicle, setIsAddingVehicle] = useState(false);
 
   useEffect(() => {
     let isCurrent = true;
@@ -55,11 +57,18 @@ export function App({ client }: AppProps) {
           return;
         }
         setVehicles(loaded);
+        setHasAnsweredVehicles(true);
         if (loaded.length > 0) {
           setSelectedVehicleId(loaded[0].id);
         }
       })
-      .catch((error: unknown) => isCurrent && setLoadError(error instanceof Error ? error.message : "Vehicles could not be loaded."));
+      .catch((error: unknown) => {
+        if (!isCurrent) {
+          return;
+        }
+        setHasAnsweredVehicles(true);
+        setLoadError(error instanceof Error ? error.message : "Vehicles could not be loaded.");
+      });
     return () => {
       isCurrent = false;
     };
@@ -79,7 +88,14 @@ export function App({ client }: AppProps) {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Recall Radar</h1>
+        <div>
+          <h1>Recall Radar</h1>
+          {/* Somebody arriving cold has about three seconds to learn what this is. */}
+          <p className="tagline">
+            Ask what is wrong with your car and get an answer quoted from NHTSA complaints, recalls and
+            defect investigations &mdash; every quote checked against the record it came from.
+          </p>
+        </div>
         <nav className="tab-bar" role="tablist" aria-label="Views">
           {Views.map((entry) => (
             <button key={entry.view} type="button" role="tab" aria-selected={view === entry.view} data-testid={`tab-${entry.view}`} onClick={() => setView(entry.view)}>
@@ -89,9 +105,36 @@ export function App({ client }: AppProps) {
         </nav>
       </header>
       <section className="panel">
+        {/* The button lives above the list, not below it: the list arrives after the first paint and
+            anything under it moves when it does, which is how a click aimed at this button landed on
+            nothing. Nothing above the header can shift. */}
+        <div className="section-header">
+          <h2 className="section-label">Your vehicles</h2>
+          {!isAddingVehicle && (
+            <button type="button" className="link-button" data-testid="add-vehicle-open" onClick={() => setIsAddingVehicle(true)}>
+              Add a vehicle
+            </button>
+          )}
+        </div>
         {databaseWarning && <p className="error-state" data-testid="database-warning">{databaseWarning}</p>}
-        {loadError ? <p className="error-state" data-testid="vehicle-load-error">{loadError}</p> : <VehiclePicker vehicles={vehicles} selectedVehicleId={selectedVehicleId} onSelect={setSelectedVehicleId} />}
-        <AddVehicleForm client={client} onLoadStarted={setActiveLoad} />
+        {loadError && <p className="error-state" data-testid="vehicle-load-error">{loadError}</p>}
+        {/* The list arrives after the first paint. Rendering "no vehicles yet" in the meantime moved
+            everything below it the moment the real cards appeared, which is how a click aimed at the
+            button underneath landed on nothing. The placeholder holds the same space. */}
+        {!loadError && !hasAnsweredVehicles && (
+          <div className="vehicle-picker" aria-busy="true" aria-label="Loading vehicles" data-testid="vehicle-picker-loading">
+            <div className="vehicle-skeleton" aria-hidden="true" />
+          </div>
+        )}
+        {!loadError && hasAnsweredVehicles && (
+          <VehiclePicker vehicles={vehicles} selectedVehicleId={selectedVehicleId} onSelect={setSelectedVehicleId} />
+        )}
+        <AddVehicleForm
+          client={client}
+          onLoadStarted={setActiveLoad}
+          isOpen={isAddingVehicle}
+          onOpenChange={setIsAddingVehicle}
+        />
         {activeLoad && <LoadStatus client={client} load={activeLoad} onFinished={handleLoadFinished} />}
         <details className="recent-loads-panel">
           <summary data-testid="recent-loads-toggle">Recent loads</summary>

@@ -1,145 +1,543 @@
-/* Recall Radar layout and the few visual states the tests and Cypress specs rely on. */
+/* Recall Radar's design system: tokens first, then the components built from them.
+
+   Every colour, space and radius below is a token. Components never invent a value, so a change to
+   the palette reaches the whole application, and light and dark stay in step by construction. */
+
 :root {
-  --ink: #1b1f23;
-  --muted: #5c6670;
-  --line: #d9dee3;
-  --accent: #0b5fff;
-  --accent-soft: #e8f0ff;
+  color-scheme: light dark;
+
+  /* Spacing. A four-point scale: enough steps to build a rhythm, few enough to stay memorable. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Type. One scale, so headings relate to body text rather than being picked by eye. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.75rem;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+
+  /* Light palette. Surfaces step up from the page, never down, so depth reads the same way twice. */
+  --page: #f4f6f9;
+  --surface: #ffffff;
+  --surface-sunken: #f8fafc;
+  --ink: #101827;
+  --ink-soft: #364152;
+  --muted: #64748b;
+  --line: #dfe4ec;
+  --line-strong: #c4ccd8;
+
+  --accent: #1a56db;
+  --accent-hover: #1543ad;
+  --accent-soft: #e8effc;
+  --accent-ink: #1543ad;
+  --on-accent: #ffffff;
+
+  --ok: #14663f;
+  --ok-soft: #ddf4e8;
   --warn: #9a3412;
-  --warn-soft: #ffedd5;
-  --ok: #166534;
-  --ok-soft: #dcfce7;
-  --mark: #fff3a3;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color: var(--ink);
-  background: #f7f8fa;
+  --warn-soft: #fdead7;
+  --danger: #a01b1b;
+  --danger-soft: #fdeaea;
+  --mark: #ffe89a;
+
+  --shadow-sm: 0 1px 2px rgb(16 24 39 / 6%);
+  --shadow-md: 0 1px 3px rgb(16 24 39 / 8%), 0 6px 16px -6px rgb(16 24 39 / 10%);
+  --ring: 0 0 0 3px rgb(26 86 219 / 30%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0d1117;
+    --surface: #161b23;
+    --surface-sunken: #1b212b;
+    --ink: #e8edf5;
+    --ink-soft: #c2ccda;
+    --muted: #8b98ab;
+    --line: #2a323d;
+    --line-strong: #3a4452;
+
+    --accent: #6a9bff;
+    --accent-hover: #86aeff;
+    --accent-soft: #1a2740;
+    --accent-ink: #a8c4ff;
+    --on-accent: #0d1117;
+
+    --ok: #6ee7a8;
+    --ok-soft: #12301f;
+    --warn: #fdba74;
+    --warn-soft: #35220f;
+    --danger: #fca5a5;
+    --danger-soft: #331616;
+    --mark: #7a5c00;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-md: 0 1px 3px rgb(0 0 0 / 45%), 0 8px 20px -8px rgb(0 0 0 / 55%);
+    --ring: 0 0 0 3px rgb(106 155 255 / 35%);
+  }
+}
+
+/* Base
+   ------------------------------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--page);
+  -webkit-font-smoothing: antialiased;
 }
 
+/* One focus ring for the whole application, and only for keyboard use, so a mouse click leaves no
+   halo behind while a Tab key still shows exactly where it landed. */
+:where(button, input, select, textarea, summary, a):focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Motion is a courtesy, not a requirement: anybody who has asked for less of it gets none. */
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  input,
+  .result-card {
+    transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, color 120ms ease;
+  }
+}
+
+/* Shell
+   ------------------------------------------------------------------------- */
+
 .app-shell {
-  max-width: 1080px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: var(--space-6) var(--space-5) var(--space-7);
 }
 
 .app-header {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
   border-bottom: 1px solid var(--line);
-  padding-bottom: 0.75rem;
-  margin-bottom: 1rem;
 }
 
 .app-header h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: var(--text-xl);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.app-header .tagline {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  max-width: 52ch;
 }
 
 .tab-bar {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
 }
 
 .tab-bar button {
-  border: 1px solid var(--line);
-  background: white;
-  padding: 0.4rem 0.9rem;
-  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
   cursor: pointer;
+  font-weight: 500;
+}
+
+.tab-bar button:hover {
+  color: var(--ink);
+  background: var(--surface);
 }
 
 .tab-bar button[aria-selected="true"] {
   background: var(--accent);
-  border-color: var(--accent);
-  color: white;
+  color: var(--on-accent);
 }
 
 .panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
+  box-shadow: var(--shadow-sm);
 }
 
-.vehicle-picker {
+.section-header {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.section-header .section-label {
+  margin: 0;
+}
+
+.section-label {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Vehicles
+   ------------------------------------------------------------------------- */
+
+.vehicle-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--space-3);
 }
 
 .vehicle-picker button {
+  display: block;
+  width: 100%;
+  min-height: 4.75rem;
   border: 1px solid var(--line);
-  background: white;
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
   cursor: pointer;
   text-align: left;
+  font-weight: 600;
+}
+
+.vehicle-picker button:hover {
+  border-color: var(--line-strong);
 }
 
 .vehicle-picker button[aria-checked="true"] {
   border-color: var(--accent);
   background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Exactly the height of a vehicle card, so nothing below moves when the real list arrives. */
+.vehicle-skeleton {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-sunken);
+  min-height: 4.75rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .vehicle-skeleton {
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
 .vehicle-picker small {
   display: block;
+  margin-top: var(--space-1);
+  color: var(--muted);
+  font-weight: 400;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Forms
+   ------------------------------------------------------------------------- */
+
+.link-button {
+  border: 1px dashed var(--line-strong);
+  background: transparent;
+  color: var(--ink-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.link-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* A grid rather than a row of inline labels: fields that wrap mid-sentence read as prose somebody
+   forgot to finish, and every control lines up on one left edge whatever its label's length. */
+.add-vehicle-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.add-vehicle-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.add-vehicle-form label small {
+  font-weight: 400;
   color: var(--muted);
 }
 
-.search-box {
+.add-vehicle-form input {
+  font: inherit;
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.add-vehicle-form input:hover {
+  border-color: var(--muted);
+}
+
+.add-vehicle-form input:focus-visible {
+  border-color: var(--accent);
+}
+
+.add-vehicle-form .error-state,
+.add-vehicle-form .form-actions {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.search-box input {
-  flex: 1;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-size: 1rem;
-}
-
+.form-actions button[type="submit"],
 .search-box button,
 .primary-button {
   background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
+  color: var(--on-accent);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
   cursor: pointer;
+  font-weight: 600;
 }
 
+.form-actions button[type="submit"]:hover:enabled,
+.search-box button:hover:enabled,
+.primary-button:hover:enabled {
+  background: var(--accent-hover);
+}
+
+.form-actions button:disabled,
 .search-box button:disabled,
 .primary-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
+.search-box {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.search-box input {
+  flex: 1;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+}
+
+.search-box input::placeholder {
+  color: var(--muted);
+}
+
+.search-box input:focus-visible {
+  border-color: var(--accent);
+}
+
+/* Loads
+   ------------------------------------------------------------------------- */
+
+.load-status {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--muted);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.load-status[data-state="running"],
+.load-status[data-state="queued"] {
+  border-left-color: var(--accent);
+}
+
+.load-status[data-state="succeeded"] {
+  border-left-color: var(--ok);
+}
+
+.load-status[data-state="failed"] {
+  border-left-color: var(--danger);
+}
+
+.load-status ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.load-status li {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.recent-loads-panel {
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-3);
+}
+
+.recent-loads-panel summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.recent-loads-panel summary:hover {
+  color: var(--ink);
+}
+
+.recent-loads,
+.eval-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.recent-loads th,
+.recent-loads td,
+.eval-table th,
+.eval-table td {
+  border-bottom: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+
+.recent-loads thead th,
+.eval-table thead th {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.recent-loads tbody th {
+  font-weight: 600;
+}
+
+.eval-table td.number,
+.recent-loads td.when {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Modes and results
+   ------------------------------------------------------------------------- */
+
 .mode-switch {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin: 0.75rem 0;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
 }
 
 .mode-switch button {
   border: 1px solid var(--line);
-  background: white;
-  padding: 0.3rem 0.7rem;
-  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
   cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.mode-switch button:hover:enabled {
+  border-color: var(--line-strong);
+  color: var(--ink);
 }
 
 .mode-switch button[aria-checked="true"] {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--on-accent);
 }
 
 .mode-switch button:disabled {
@@ -149,7 +547,7 @@ body {
 
 .mode-switch .explanation {
   color: var(--warn);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .result-list {
@@ -157,60 +555,79 @@ body {
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .result-card {
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  background: white;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.result-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
 }
 
 .result-card header {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: baseline;
 }
 
 .result-card .kind {
   text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  color: var(--accent-ink);
 }
 
 .result-card .meta {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
+/* Showing why a record was retrieved is the point of this application, so the ranks are a legible
+   strip rather than a footnote. */
 .rank-explanation {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
 }
 
 .rank-badge {
-  border-radius: 999px;
-  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 
 .rank-badge.absent {
-  background: #eef0f2;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
   color: var(--muted);
+  font-weight: 400;
 }
+
+/* Answers
+   ------------------------------------------------------------------------- */
 
 .status-pill {
   display: inline-block;
-  border-radius: 999px;
-  padding: 0.2rem 0.7rem;
-  font-size: 0.85rem;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .status-pill.grounded {
@@ -225,74 +642,83 @@ body {
 
 .dropped-count {
   color: var(--warn);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .citation-list {
   list-style: none;
   padding: 0;
-  margin: 0.75rem 0 0;
+  margin: var(--space-4) 0 0;
   display: grid;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .citation-list button {
   width: 100%;
   text-align: left;
   border: 1px solid var(--line);
-  background: white;
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
   cursor: pointer;
 }
 
+.citation-list button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .citation-list blockquote {
-  margin: 0.25rem 0 0;
-  padding-left: 0.75rem;
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-3);
   border-left: 3px solid var(--accent);
-  color: var(--ink);
+  color: var(--ink-soft);
 }
 
 .record-body {
   white-space: pre-wrap;
-  line-height: 1.5;
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  font-size: 0.9rem;
+  line-height: 1.6;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  max-height: 24rem;
+  overflow-y: auto;
 }
 
 .record-body mark {
   background: var(--mark);
-  padding: 0 0.1rem;
+  color: var(--ink);
+  padding: 0 var(--space-1);
+  border-radius: 2px;
 }
 
-.eval-table {
-  width: 100%;
-  border-collapse: collapse;
+.known-pattern-panel ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
 }
 
-.eval-table th,
-.eval-table td {
-  border-bottom: 1px solid var(--line);
-  padding: 0.5rem 0.75rem;
-  text-align: left;
-}
-
-.eval-table td.number {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
+/* States
+   ------------------------------------------------------------------------- */
 
 .empty-state,
 .error-state {
   color: var(--muted);
-  font-style: italic;
+  margin: var(--space-4) 0;
 }
 
 .error-state {
-  color: var(--warn);
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
 }
 
-.known-pattern-panel ul {
-  margin: 0.25rem 0 0;
-  padding-left: 1.25rem;
+.caption {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  margin: var(--space-2) 0 0;
 }

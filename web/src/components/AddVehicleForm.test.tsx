@@ -1,4 +1,5 @@
 // Checks the add-vehicle form validates before sending and surfaces NHTSA's own rejection.
+import { useState } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AddVehicleForm, EarliestModelYear, findProblem, latestModelYear } from "./AddVehicleForm";
 import { ApiError } from "../api/client";
@@ -23,6 +24,29 @@ function createClient(registerVehicle: (request: RegisterVehicleRequest) => Prom
   return createStubClient({ registerVehicle });
 }
 
+/**
+ * Renders the form the way the application does: somebody else owns whether it is open, so the
+ * button that opens it can sit where the vehicle list arriving cannot move it.
+ */
+function FormHost({ client, onLoadStarted }: { client: ApiClient; onLoadStarted?: (load: Load) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <>
+      {!isOpen && (
+        <button type="button" data-testid="add-vehicle-open" onClick={() => setIsOpen(true)}>
+          Add a vehicle
+        </button>
+      )}
+      <AddVehicleForm
+        client={client}
+        onLoadStarted={onLoadStarted ?? (() => undefined)}
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+      />
+    </>
+  );
+}
+
 function openAndFill(values: { model?: string; name?: string; year?: string } = {}) {
   fireEvent.click(screen.getByTestId("add-vehicle-open"));
   fireEvent.change(screen.getByLabelText("NHTSA model"), { target: { value: values.model ?? "EXPLORER" } });
@@ -33,15 +57,10 @@ function openAndFill(values: { model?: string; name?: string; year?: string } = 
 describe("AddVehicleForm", () => {
   it("sends the registration and hands back the load that was started", async () => {
     const sent: RegisterVehicleRequest[] = [];
-    render(
-      <AddVehicleForm
-        client={createClient((request) => {
+    render(<FormHost client={createClient((request) => {
           sent.push(request);
           return Promise.resolve(queued);
-        })}
-        onLoadStarted={() => undefined}
-      />,
-    );
+        })} onLoadStarted={() => undefined} />);
 
     openAndFill();
     fireEvent.submit(screen.getByTestId("add-vehicle-form"));
@@ -53,7 +72,7 @@ describe("AddVehicleForm", () => {
 
   it("reports the load to its caller so the page can show progress", async () => {
     const started: Load[] = [];
-    render(<AddVehicleForm client={createClient(() => Promise.resolve(queued))} onLoadStarted={(load) => started.push(load)} />);
+    render(<FormHost client={createClient(() => Promise.resolve(queued))} onLoadStarted={(load) => started.push(load)} />);
 
     openAndFill();
     fireEvent.submit(screen.getByTestId("add-vehicle-form"));
@@ -64,12 +83,7 @@ describe("AddVehicleForm", () => {
   it("shows NHTSA's rejection, which names the model strings it does know", async () => {
     // A bare "invalid" would leave someone stuck; the list of valid names is the useful part.
     const detail = "NHTSA has no complaint model named 'EXPLORRER'. Known names include: EXPLORER, EDGE.";
-    render(
-      <AddVehicleForm
-        client={createClient(() => Promise.reject(new ApiError(400, "Unknown NHTSA model", detail)))}
-        onLoadStarted={() => undefined}
-      />,
-    );
+    render(<FormHost client={createClient(() => Promise.reject(new ApiError(400, "Unknown NHTSA model", detail)))} onLoadStarted={() => undefined} />);
 
     openAndFill({ model: "EXPLORRER" });
     fireEvent.submit(screen.getByTestId("add-vehicle-form"));
@@ -79,15 +93,10 @@ describe("AddVehicleForm", () => {
 
   it("refuses to send a registration that could never be looked up", async () => {
     let callCount = 0;
-    render(
-      <AddVehicleForm
-        client={createClient(() => {
+    render(<FormHost client={createClient(() => {
           callCount += 1;
           return Promise.resolve(queued);
-        })}
-        onLoadStarted={() => undefined}
-      />,
-    );
+        })} onLoadStarted={() => undefined} />);
 
     openAndFill({ model: "" });
     fireEvent.submit(screen.getByTestId("add-vehicle-form"));
@@ -114,7 +123,7 @@ describe("AddVehicleForm", () => {
       registerVehicle: () => Promise.resolve(queued),
       listNhtsaModels: () => Promise.resolve(["MUSTANG ICE", "MUSTANG MACH-E BEV BEV"]),
     });
-    render(<AddVehicleForm client={client} onLoadStarted={() => undefined} />);
+    render(<FormHost client={client} onLoadStarted={() => undefined} />);
 
     fireEvent.click(screen.getByTestId("add-vehicle-open"));
 
@@ -132,7 +141,7 @@ describe("AddVehicleForm", () => {
         return Promise.resolve([]);
       },
     });
-    render(<AddVehicleForm client={client} onLoadStarted={() => undefined} />);
+    render(<FormHost client={client} onLoadStarted={() => undefined} />);
 
     fireEvent.click(screen.getByTestId("add-vehicle-open"));
     fireEvent.change(screen.getByLabelText("Model year"), { target: { value: "2026" } });
@@ -150,7 +159,7 @@ describe("AddVehicleForm", () => {
       },
       listNhtsaModels: () => Promise.reject(new Error("offline")),
     });
-    render(<AddVehicleForm client={client} onLoadStarted={() => undefined} />);
+    render(<FormHost client={client} onLoadStarted={() => undefined} />);
 
     openAndFill();
     fireEvent.submit(screen.getByTestId("add-vehicle-form"));

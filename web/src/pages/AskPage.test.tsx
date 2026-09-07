@@ -35,6 +35,14 @@ describe("AskPage", () => {
     expect(screen.getByTestId("ask-needs-vehicle")).toBeTruthy();
   });
 
+  it("states the grounding guarantee before anybody has asked anything", () => {
+    // What separates this from a chat window is that nothing is asserted unless it is quoted from
+    // a record you can open, so the page says so up front rather than after the fact.
+    render(<AskPage client={createClient(() => Promise.reject(new Error()))} vehicleId={7} isEmbeddingsAvailable isAnsweringAvailable />);
+
+    expect(screen.getByTestId("ask-invitation").textContent).toContain("checked word for word");
+  });
+
   it("sends the question in the strongest available mode and shows the answer with its links", async () => {
     const requests: AskRequest[] = [];
     const client = createClient((request) => {

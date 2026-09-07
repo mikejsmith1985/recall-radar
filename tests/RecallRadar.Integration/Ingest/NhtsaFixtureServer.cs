@@ -67,6 +67,21 @@ public sealed class NhtsaFixtureServer : IDisposable
             .RespondWith(Response.Create().WithStatusCode(500).WithBody("upstream failure"));
     }
 
+    /// <summary>
+    /// Makes the recalls feed answer for one model exactly as NHTSA answers for a vehicle that has
+    /// no recalls: status 400, carrying a body that says everything went fine.
+    /// </summary>
+    /// <remarks>Captured from the live feed on 2026-09-07 for FORD MUSTANG MACH-E BEV BEV 2026.</remarks>
+    public void ReturnNoRecallsFor(string model)
+    {
+        MapJson(ComplaintsPath, "complaints-explorer-2013.json", model);
+        _server.Given(Request.Create().WithPath(RecallsPath).WithParam("model", model).UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(400)
+                .WithHeader("Content-Type", JsonContentType)
+                .WithBody("""{"Count":0,"Message":"Results returned successfully","results":[]}"""));
+    }
+
     /// <summary>Number of requests received so far, to prove nothing but GET was ever sent.</summary>
     public IReadOnlyList<string> ReceivedMethods => _server.LogEntries.Select(entry => entry.RequestMessage?.Method ?? string.Empty).ToList();
 

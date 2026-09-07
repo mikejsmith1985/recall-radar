@@ -1,12 +1,25 @@
 // Checks the vehicle picker renders every vehicle with its counts and reports a selection.
 import { fireEvent, render, screen } from "@testing-library/react";
-import { VehiclePicker } from "./VehiclePicker";
+import { formatCounts, pluralise, VehiclePicker } from "./VehiclePicker";
 import type { Vehicle } from "../api/client";
 
 const vehicles: Vehicle[] = [
   { id: 1, displayName: "2013 Explorer Sport", make: "FORD", modelYear: 2013, counts: { complaint: 2231, recall: 12, investigation: 4 } },
   { id: 2, displayName: "2014 F-150 SVT Raptor", make: "FORD", modelYear: 2014, counts: { complaint: 1362, recall: 8, investigation: 2 } },
 ];
+
+describe("counts", () => {
+  it("does not say one complaints", () => {
+    // A 2026 car with a single complaint on file is the ordinary first state, not a rare one.
+    expect(formatCounts({ ...vehicles[0], counts: { complaint: 1, recall: 0, investigation: 1 } }))
+      .toBe("1 complaint · 0 recalls · 1 investigation");
+  });
+
+  it("pluralises everything else, including zero", () => {
+    expect(pluralise(0, "recall")).toBe("0 recalls");
+    expect(pluralise(2, "recall")).toBe("2 recalls");
+  });
+});
 
 describe("VehiclePicker", () => {
   it("shows every vehicle with its record counts and marks the selected one", () => {

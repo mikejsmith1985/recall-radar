@@ -21,6 +21,34 @@ public sealed class NhtsaRecallsClientTests
             NhtsaRecallsClient.BuildRequestUri("FORD", "EXPLORER", 2013).ToString());
     }
 
+    [Theory]
+    [InlineData("""{"Count":0,"Message":"Results returned successfully","results":[]}""")]
+    [InlineData("""{"count":0,"results":[]}""")]
+    public void IsEmptyResultEnvelope_RecognisesNhtsaSayingNothingWasFound(string body)
+    {
+        // NHTSA sends this with status 400, so a car too new to have been recalled is
+        // indistinguishable from a malformed request by status code alone.
+        Assert.True(NhtsaRecallsClient.IsEmptyResultEnvelope(body));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("<html><body>Bad Gateway</body></html>")]
+    [InlineData("""{"Count":1,"results":[{"NHTSACampaignNumber":"19V435000"}]}""")]
+    [InlineData("""[1, 2, 3]""")]
+    // An error page that happens to be JSON has no results array at all. Absent is not empty:
+    // treating the two alike turned a stub's 404 into a successful load with zero recalls.
+    [InlineData("""{"Status":"No matching mapping found","Error":"..."}""")]
+    [InlineData("""{"Count":0,"results":null}""")]
+    [InlineData("""{"Count":0}""")]
+    public void IsEmptyResultEnvelope_LeavesEveryOtherFailureFailing(string? body)
+    {
+        // A real problem wearing the same status code must still fail the load.
+        Assert.False(NhtsaRecallsClient.IsEmptyResultEnvelope(body));
+    }
+
     [Fact]
     public void ParseResults_ReadsBothDateOrdersAndAssemblesBodies()
     {

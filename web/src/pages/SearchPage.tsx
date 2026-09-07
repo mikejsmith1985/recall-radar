@@ -13,6 +13,10 @@ interface SearchPageProps {
 
 export const SelectVehiclePrompt = "Pick a vehicle above to search its records.";
 
+/** Shown before the first search: blank space tells nobody what this page is for. */
+export const SearchInvitation =
+  "Describe a symptom in your own words. Every record that comes back says how it was found: by meaning, by keyword, or by both.";
+
 export function SearchPage({ client, vehicleId, isEmbeddingsAvailable }: SearchPageProps) {
   const [mode, setMode] = useState<RetrievalMode>(() => chooseDefaultMode(isEmbeddingsAvailable));
   const [isModePinned, setIsModePinned] = useState(false);
@@ -76,6 +80,9 @@ export function SearchPage({ client, vehicleId, isEmbeddingsAvailable }: SearchP
       />
       <ModeSwitch mode={mode} isEmbeddingsAvailable={isEmbeddingsAvailable} onChange={handleModeChange} />
       {errorMessage && <p className="error-state" data-testid="search-error">{errorMessage}</p>}
+      {lastQuery === null && !errorMessage && (
+        <p className="empty-state" data-testid="search-invitation">{SearchInvitation}</p>
+      )}
       {lastQuery !== null && hits.length === 0 && !errorMessage && (
         <p className="empty-state" data-testid="search-empty">No records matched “{lastQuery}”.</p>
       )}
