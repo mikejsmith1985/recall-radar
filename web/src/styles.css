@@ -499,6 +499,16 @@ button {
   font-weight: 600;
 }
 
+/* A failure reads in the column it belongs to. The message is a sentence and its technical detail,
+   so the column is capped and wraps rather than pushing the rest of the table off the panel. */
+.recent-loads td.result {
+  max-width: 34ch;
+}
+
+.failure-note {
+  color: var(--danger);
+}
+
 .eval-table td.number,
 .recent-loads td.when {
   text-align: right;

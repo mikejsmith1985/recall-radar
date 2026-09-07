@@ -81,7 +81,11 @@ export function RecentLoads({ client, refreshToken }: RecentLoadsProps) {
         {loads.map((load) => (
           <tr key={load.id} data-testid={`recent-load-${load.id}`} data-state={load.state}>
             <th scope="row">{load.displayName}</th>
-            <td>{load.state === "failed" ? <span className="error-state">{load.message ?? "failed"}</span> : load.state}</td>
+            {/* Not the alert box the page uses elsewhere: inside a cell that bursts out of its row.
+                A failure reads as red text in the column where the result belongs. */}
+            <td className="result">
+              {load.state === "failed" ? <span className="failure-note">{load.message ?? "failed"}</span> : load.state}
+            </td>
             <td>{load.trigger}</td>
             <td className="when">{describeWhen(load)}</td>
           </tr>

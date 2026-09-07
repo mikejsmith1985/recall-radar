@@ -39,6 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   seven test files.
 
 ### Fixed
+- A real click in the browser suite lands where it was aimed. `cy.screenshot()` un-scales Cypress's
+  application frame to capture the page and restores it on a later render, and cypress-real-events
+  works out a whole-tab coordinate from that frame's scale and offset. A click computed at scale 1
+  instead of 0.772 landed at (561, 125) for a button whose centre was (899, 215) -- on the page
+  header -- and nothing reported an error, because a click did happen. Positioned real events now
+  wait for the frame to leave the corner it is captured from, and `real-events.cy.ts` fails if that
+  stops working.
+- A failed load's message stays inside its cell in the recent-loads table. It reused the page's alert
+  box, which has a background, a border and its own margin, so it burst out of the row.
 - A vehicle with no recalls loads instead of failing. NHTSA answers "nothing found" from the recalls
   feed with status 400 and a body reading `Results returned successfully`, so a 2026 Mach-E whose
   complaints came back perfectly well failed its whole load. Only a parseable envelope carrying an
