@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not block anything: the name can still be typed.
 
 ### Changed
+- The API applies pending migrations when it starts. It owns tables no other component creates, and
+  leaving that to the ingest command line meant a database could be reachable, report healthy, and
+  still answer 500 the moment somebody added a vehicle. `Schema:ShouldMigrateAtStartup` turns it off
+  for a deployment that applies migrations deliberately. A failure is logged rather than thrown: a
+  process that exits before it can be asked what went wrong is worse than one that says so.
+- A configured API key beats one exported into the environment. Configuration already carries
+  environment variables, so a running server sees no difference; it lets a test host say "this
+  process has no key" on a machine where the vault has injected one, instead of the suite passing or
+  failing according to what somebody injected an hour earlier.
 - The browser suite runs in Chrome rather than Cypress's bundled Electron. Electron 118 crashes with
   an access violation on real keystrokes into an input bound to a `<datalist>`; Chrome handles the
   same steps, and it is the browser people actually use.
@@ -22,6 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   seven test files.
 
 ### Fixed
+- `/health` reports a database that is behind this build as `schema-outdated` rather than `ok`. It
+  had only asked whether the database could be reached, which is not the same as whether it can be
+  used, so the first sign of a missing table was `Internal Server Error` in the browser. The page
+  now shows that state instead of leaving the field for nobody to read.
+- The search page moves to the combined default once health says meaning search is available. It
+  chose its mode when it first rendered, which is before health has answered, so a server that could
+  do every mode sat in keyword mode. A mode somebody picked, or one the server refused, is left
+  alone.
+- The browser-suite environment empties the embedding key in configuration before anything reads it.
+  It seeds chunks with no vectors, so meaning search cannot work there anyway -- and with a key
+  exported into the shell, a test in combined mode would have called the real Voyage API, which no
+  browser test may do (Article V).
 - A rejected model name now suggests the closest names rather than listing the first twenty
   alphabetically. The old message stopped at `F-59` and hid `MUSTANG MACH-E BEV BEV`, which was the
   name being reached for, while looking like a complete list. Suggestions are ranked by how many

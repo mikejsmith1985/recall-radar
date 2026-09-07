@@ -49,6 +49,30 @@ describe("App", () => {
     expect((screen.getByTestId("mode-dense") as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("says so when the database is behind the server it belongs to", async () => {
+    // This state reached a user as a bare "Internal Server Error" on the add-vehicle form, because
+    // health had reported it all along and nothing on the page read the field.
+    const behind: HealthReport = { ...healthy, status: "unavailable", database: "schema-outdated" };
+    render(<App client={createClient(behind, () => Promise.resolve(vehicles))} />);
+
+    expect((await screen.findByTestId("database-warning")).textContent).toContain("behind this build");
+  });
+
+  it("says so when the database cannot be reached at all", async () => {
+    const unreachable: HealthReport = { ...healthy, status: "unavailable", database: "unavailable" };
+    render(<App client={createClient(unreachable, () => Promise.resolve(vehicles))} />);
+
+    expect((await screen.findByTestId("database-warning")).textContent).toContain("cannot reach its database");
+  });
+
+  it("stays quiet while health has not answered yet", async () => {
+    // "unknown" is the state before the first response, not a fault worth alarming anybody about.
+    render(<App client={createClient(healthy, () => Promise.resolve(vehicles))} />);
+    await screen.findByTestId("vehicle-option-1");
+
+    expect(screen.queryByTestId("database-warning")).toBeNull();
+  });
+
   it("shows the failure when vehicles cannot load", async () => {
     render(<App client={createClient(healthy, () => Promise.reject(new Error("database unreachable")))} />);
 

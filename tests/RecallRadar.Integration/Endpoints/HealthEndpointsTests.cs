@@ -47,6 +47,25 @@ public sealed class HealthEndpointsTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Health_ReportsEmbeddingsAvailableWhenAKeyIsConfigured()
+    {
+        // The negative case above passes on a machine with no key for the wrong reason as easily as
+        // the right one, so the positive direction is asserted too.
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting(AppSettings.ConnectionConfigurationKey, postgres.ConnectionString);
+            builder.UseSetting(RunnerOff.Key, RunnerOff.Value);
+            builder.WithNoKeys();
+            builder.UseSetting(AppSettings.VoyageKeyVariable, "not-a-real-key");
+        });
+        using var client = factory.CreateClient();
+
+        var report = await client.GetFromJsonAsync<HealthResponse>("/health", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HealthEndpoints.Available, report!.Embeddings);
+    }
+
+    [Fact]
     public async Task Health_IsAlwaysJsonSoTheClientCanReadTheCapabilityFlags()
     {
         await using var factory = CreateFactory(postgres.ConnectionString);
@@ -62,5 +81,6 @@ public sealed class HealthEndpointsTests(PostgresFixture postgres)
         {
             builder.UseSetting(AppSettings.ConnectionConfigurationKey, connectionString);
             builder.UseSetting(RunnerOff.Key, RunnerOff.Value);
+            builder.WithNoKeys();
         });
 }

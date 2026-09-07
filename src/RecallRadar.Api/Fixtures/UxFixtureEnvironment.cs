@@ -1,6 +1,7 @@
 // Names the browser-suite environment and prepares its database before the first request.
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using RecallRadar.Api.Config;
 using RecallRadar.Retrieval.Persistence;
 
 namespace RecallRadar.Api.Fixtures;
@@ -13,6 +14,21 @@ public static class UxFixtureEnvironment
 {
     /// <summary>Set as ASPNETCORE_ENVIRONMENT by scripts/run-dev-clean.ps1 -CypressOnly.</summary>
     public const string Name = "UxFixture";
+
+    /// <summary>
+    /// Configuration this environment forces, whatever the shell around it happens to hold.
+    /// </summary>
+    /// <remarks>
+    /// The fixture seeds chunks with no vectors, so meaning search genuinely cannot work here -- and
+    /// a browser test must never reach a paid API (Article V). Emptying the key makes both true by
+    /// construction: the refusing generator is registered and health reports meaning modes as
+    /// unavailable. Left to the environment, a vault injection in the developer's shell would turn
+    /// the modes on, and the suite would pass or fail according to what somebody exported.
+    /// </remarks>
+    public static readonly IReadOnlyList<KeyValuePair<string, string?>> ConfigurationOverrides =
+    [
+        new(AppSettings.VoyageKeyVariable, string.Empty),
+    ];
 
     /// <summary>Applies migrations and seeds the fixture, before the server accepts a request.</summary>
     public static async Task PrepareAsync(IServiceProvider services, CancellationToken cancellationToken)

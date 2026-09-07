@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecallRadar.Api.Answering;
 using RecallRadar.Api.Config;
+using RecallRadar.Api.Persistence;
 using RecallRadar.Retrieval.Persistence;
 
 namespace RecallRadar.Api.Endpoints;
@@ -17,6 +18,9 @@ public static class HealthEndpoints
     public const string Available = "ok";
     public const string Unavailable = "unavailable";
 
+    /// <summary>Reachable, but missing tables this build of the API needs.</summary>
+    public const string SchemaBehind = "schema-outdated";
+
     /// <summary>Registers GET /health.</summary>
     public static IEndpointRouteBuilder MapHealthEndpoint(this IEndpointRouteBuilder endpoints)
     {
@@ -28,32 +32,47 @@ public static class HealthEndpoints
     private static async Task<IResult> ReportHealthAsync(
         RecallRadarDbContext database, AppSettings settings, IServiceProvider services, CancellationToken cancellationToken)
     {
-        var isDatabaseReachable = await CanReachDatabaseAsync(database, cancellationToken);
+        var databaseState = await CheckDatabaseAsync(database, cancellationToken);
+        var isDatabaseUsable = databaseState == Available;
 
         // Answering is reported from what is registered rather than from the key, so the answer
         // this gives always matches what the ask endpoint will actually do.
         var canAnswer = services.GetService<AnswerService>() is not null;
         var report = new HealthResponse(
-            isDatabaseReachable ? Available : Unavailable,
-            isDatabaseReachable ? Available : Unavailable,
+            isDatabaseUsable ? Available : Unavailable,
+            databaseState,
             settings.HasVoyageKey ? Available : Unavailable,
             canAnswer ? Available : Unavailable);
 
-        return isDatabaseReachable
+        return isDatabaseUsable
             ? Results.Ok(report)
             : Results.Json(report, statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 
-    /// <summary>A failed connection is a reportable state, not an exception to propagate.</summary>
-    private static async Task<bool> CanReachDatabaseAsync(RecallRadarDbContext database, CancellationToken cancellationToken)
+    /// <summary>
+    /// A failed connection is a reportable state, not an exception to propagate.
+    /// </summary>
+    /// <remarks>
+    /// This asks two questions, because a database can answer the first and fail the second: it can
+    /// be reached, and it holds every table this build needs. Checking only reachability once let
+    /// health report "ok" against a database missing the table behind the loads list, so the first
+    /// sign of trouble was a 500 in somebody's browser.
+    /// </remarks>
+    private static async Task<string> CheckDatabaseAsync(RecallRadarDbContext database, CancellationToken cancellationToken)
     {
         try
         {
-            return await database.Database.CanConnectAsync(cancellationToken);
+            if (!await database.Database.CanConnectAsync(cancellationToken))
+            {
+                return Unavailable;
+            }
+
+            var pending = await SchemaMigrator.FindPendingAsync(database, cancellationToken);
+            return pending.Count == 0 ? Available : SchemaBehind;
         }
         catch (Exception failure) when (failure is not OperationCanceledException)
         {
-            return false;
+            return Unavailable;
         }
     }
 }

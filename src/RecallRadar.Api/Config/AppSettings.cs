@@ -59,11 +59,23 @@ public sealed class AppSettings
         };
     }
 
+    /// <summary>
+    /// Configuration wins where it says anything at all, and the environment fills the gaps.
+    /// </summary>
+    /// <remarks>
+    /// Configuration already includes environment variables, so on a running server the two agree
+    /// and this changes nothing. It matters to a test host, which must be able to say "this process
+    /// has no key" even on a machine where the vault has exported one into the shell -- otherwise
+    /// whether the suite passes depends on what the developer injected an hour ago. An explicitly
+    /// configured empty value counts as an answer, which is how absence gets said out loud.
+    /// </remarks>
     private static string? FirstSet(string name, Func<string, string?> readEnvironment, Func<string, string?> readConfiguration)
     {
-        var fromEnvironment = readEnvironment(name);
-        return string.IsNullOrWhiteSpace(fromEnvironment) ? readConfiguration(name) : fromEnvironment;
+        var fromConfiguration = readConfiguration(name);
+        return fromConfiguration is not null ? NullIfBlank(fromConfiguration) : NullIfBlank(readEnvironment(name));
     }
+
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     /// <summary>Renders capability flags only. Key material and the connection string are never included.</summary>
     public override string ToString() =>

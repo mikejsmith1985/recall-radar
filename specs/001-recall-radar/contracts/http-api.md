@@ -10,6 +10,10 @@ Errors use RFC 9457 problem details (`application/problem+json`).
 `embeddings` is `unavailable` when no `VOYAGE_API_KEY` is configured; `answering` when no
 `ANTHROPIC_API_KEY` is configured.
 
+`database` answers two questions, because a database can be reachable and still unusable:
+`unavailable` when it cannot be reached, and `schema-outdated` when it can but has not applied every
+migration this build needs. Either answers `503` with `status: "unavailable"`.
+
 ## GET /api/vehicles
 
 `200 [ { "id": 1, "displayName": "2013 Explorer Sport", "make": "FORD", "modelYear": 2013,
