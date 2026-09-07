@@ -30,6 +30,11 @@ export function ResultCard({ hit, position }: ResultCardProps) {
       <div className="meta">
         {hit.externalId} · {hit.component || "component unknown"} · {formatFiledOn(hit.filedOn)}
       </div>
+      {/* Which version this record was filed under. It matters most when the search has been
+          widened: a mixed list is only readable if each record says where it belongs. */}
+      <div className="trim-badge" data-testid="hit-trim">
+        {hit.trim ?? "trim not decoded"}
+      </div>
       <p>{hit.snippet}</p>
       <div className="rank-explanation" data-testid="rank-explanation">
         <span className={`rank-badge${hit.denseRank === null ? " absent" : ""}`} data-testid="dense-rank">

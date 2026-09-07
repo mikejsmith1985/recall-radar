@@ -82,6 +82,7 @@ export function App({ client }: AppProps) {
   }, []);
 
   const databaseWarning = DatabaseWarnings[health.database];
+  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? null;
   const isEmbeddingsAvailable = health.embeddings === "ok";
   const isAnsweringAvailable = health.answering === "ok";
 
@@ -141,7 +142,14 @@ export function App({ client }: AppProps) {
           <RecentLoads client={client} refreshToken={vehiclesVersion} />
         </details>
       </section>
-      {view === "search" && <SearchPage client={client} vehicleId={selectedVehicleId} isEmbeddingsAvailable={isEmbeddingsAvailable} />}
+      {view === "search" && (
+        <SearchPage
+          client={client}
+          vehicleId={selectedVehicleId}
+          isEmbeddingsAvailable={isEmbeddingsAvailable}
+          vehicleTrim={selectedVehicle?.trim ?? null}
+        />
+      )}
       {view === "ask" && <AskPage client={client} vehicleId={selectedVehicleId} isEmbeddingsAvailable={isEmbeddingsAvailable} isAnsweringAvailable={isAnsweringAvailable} />}
       {view === "eval" && <EvalPage client={client} />}
     </div>

@@ -15,6 +15,7 @@ const hit: SearchHit = {
   denseRank: 1,
   sparseRank: 3,
   fusedScore: 0.03226,
+  trim: null,
 };
 
 describe("ResultCard", () => {

@@ -1,6 +1,7 @@
 // Registers a vehicle and starts its load, so adding a car never means opening a terminal.
 import { useEffect, useState } from "react";
 import type { ApiClient, Load, RegisterVehicleRequest } from "../api/client";
+import { isWellFormedVin, VinLength } from "../api/vin";
 
 interface AddVehicleFormProps {
   client: ApiClient;
@@ -33,6 +34,10 @@ export function findProblem(request: RegisterVehicleRequest, now: Date = new Dat
   if (!Number.isInteger(request.modelYear) || request.modelYear < EarliestModelYear || request.modelYear > latestModelYear(now)) {
     return `The model year must be between ${EarliestModelYear} and ${latestModelYear(now)}.`;
   }
+  // Optional, but a half-typed one is worse than none: it would decode to a different vehicle.
+  if (request.vin && !isWellFormedVin(request.vin)) {
+    return `A VIN is ${VinLength} letters and digits, never I, O or Q. Leave it blank if you do not have it to hand.`;
+  }
   return null;
 }
 
@@ -42,6 +47,7 @@ const EmptyForm: RegisterVehicleRequest = {
   recallModel: "",
   modelYear: new Date().getFullYear(),
   displayName: "",
+  vin: "",
 };
 
 export function AddVehicleForm({ client, onLoadStarted, isOpen, onOpenChange }: AddVehicleFormProps) {
@@ -89,7 +95,11 @@ export function AddVehicleForm({ client, onLoadStarted, isOpen, onOpenChange }: 
     try {
       // The load takes minutes, so the server answers with a job rather than a vehicle. The caller
       // decides what to show while it runs.
-      onLoadStarted(await client.registerVehicle({ ...form, recallModel: form.recallModel?.trim() || null }));
+      onLoadStarted(await client.registerVehicle({
+        ...form,
+        recallModel: form.recallModel?.trim() || null,
+        vin: form.vin?.trim().toUpperCase() || null,
+      }));
       setForm(EmptyForm);
       onOpenChange(false);
     } catch (error: unknown) {
@@ -146,6 +156,16 @@ export function AddVehicleForm({ client, onLoadStarted, isOpen, onOpenChange }: 
           placeholder="2013 Explorer Sport"
           value={form.displayName}
           onChange={(event) => update("displayName", event.target.value)}
+        />
+      </label>
+      <label>
+        VIN <small>(optional, narrows to your exact trim)</small>
+        <input
+          aria-label="VIN"
+          placeholder="1FTFW1RJ0PFB00000"
+          maxLength={VinLength}
+          value={form.vin ?? ""}
+          onChange={(event) => update("vin", event.target.value.toUpperCase())}
         />
       </label>
       <label>

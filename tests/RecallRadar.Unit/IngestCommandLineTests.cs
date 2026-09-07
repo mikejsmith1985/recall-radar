@@ -14,12 +14,32 @@ public sealed class IngestCommandLineTests
         var root = IngestCommandLine.Build(
             (vehicle, _) => { received = vehicle; return Task.FromResult(0); },
             (_, _) => Task.FromResult(UnusedHandlerExitCode),
-            _ => Task.FromResult(UnusedHandlerExitCode));
+            _ => Task.FromResult(UnusedHandlerExitCode),
+            (_, _) => Task.FromResult(UnusedHandlerExitCode));
 
         var exitCode = await root.Parse(["ingest", "--vehicle", "2013 Explorer Sport"]).InvokeAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("2013 Explorer Sport", received);
+    }
+
+    [Fact]
+    public async Task Decode_PassesTheOptionalVehicleToTheHandler()
+    {
+        var wasCalled = false;
+        string? received = "not called";
+        var root = IngestCommandLine.Build(
+            (_, _) => Task.FromResult(UnusedHandlerExitCode),
+            (_, _) => Task.FromResult(UnusedHandlerExitCode),
+            _ => Task.FromResult(UnusedHandlerExitCode),
+            (vehicle, _) => { wasCalled = true; received = vehicle; return Task.FromResult(0); });
+
+        var exitCode = await root.Parse(["decode"]).InvokeAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(wasCalled);
+        // No vehicle means every stored complaint, which is what a back-fill wants.
+        Assert.Null(received);
     }
 
     [Fact]
@@ -29,7 +49,8 @@ public sealed class IngestCommandLineTests
         var root = IngestCommandLine.Build(
             (_, _) => { wasHandlerCalled = true; return Task.FromResult(0); },
             (_, _) => Task.FromResult(UnusedHandlerExitCode),
-            _ => Task.FromResult(UnusedHandlerExitCode));
+            _ => Task.FromResult(UnusedHandlerExitCode),
+            (_, _) => Task.FromResult(UnusedHandlerExitCode));
 
         var parseResult = root.Parse(["ingest"]);
 
@@ -71,7 +92,8 @@ public sealed class IngestCommandLineTests
         var root = IngestCommandLine.Build(
             (_, _) => Task.FromResult(1),
             (_, _) => Task.FromResult(1),
-            _ => Task.FromResult(42));
+            _ => Task.FromResult(42),
+            (_, _) => Task.FromResult(1));
 
         var exitCode = await root.Parse(["eval"]).InvokeAsync(cancellationToken: TestContext.Current.CancellationToken);
 
@@ -82,5 +104,6 @@ public sealed class IngestCommandLineTests
         IngestCommandLine.Build(
             (_, _) => Task.FromResult(UnusedHandlerExitCode),
             (vehicle, _) => { onEmbed(vehicle); return Task.FromResult(0); },
-            _ => Task.FromResult(UnusedHandlerExitCode));
+            _ => Task.FromResult(UnusedHandlerExitCode),
+            (_, _) => Task.FromResult(UnusedHandlerExitCode));
 }

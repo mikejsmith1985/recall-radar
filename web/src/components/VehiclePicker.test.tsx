@@ -4,14 +4,14 @@ import { formatCounts, pluralise, VehiclePicker } from "./VehiclePicker";
 import type { Vehicle } from "../api/client";
 
 const vehicles: Vehicle[] = [
-  { id: 1, displayName: "2013 Explorer Sport", make: "FORD", modelYear: 2013, counts: { complaint: 2231, recall: 12, investigation: 4 } },
-  { id: 2, displayName: "2014 F-150 SVT Raptor", make: "FORD", modelYear: 2014, counts: { complaint: 1362, recall: 8, investigation: 2 } },
+  { id: 1, displayName: "2013 Explorer Sport", make: "FORD", modelYear: 2013, counts: { complaint: 2231, recall: 12, investigation: 4 }, trim: null },
+  { id: 2, displayName: "2014 F-150 SVT Raptor", make: "FORD", modelYear: 2014, counts: { complaint: 1362, recall: 8, investigation: 2 }, trim: null },
 ];
 
 describe("counts", () => {
   it("does not say one complaints", () => {
     // A 2026 car with a single complaint on file is the ordinary first state, not a rare one.
-    expect(formatCounts({ ...vehicles[0], counts: { complaint: 1, recall: 0, investigation: 1 } }))
+    expect(formatCounts({ ...vehicles[0], counts: { complaint: 1, recall: 0, investigation: 1 }, trim: null }))
       .toBe("1 complaint · 0 recalls · 1 investigation");
   });
 

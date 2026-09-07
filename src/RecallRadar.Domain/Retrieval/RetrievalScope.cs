@@ -38,7 +38,16 @@ public static class RetrievalScopes
             return null;
         }
 
-        return Enum.TryParse<RetrievalScope>(text.Trim(), ignoreCase: true, out var scope) && Enum.IsDefined(scope)
+        var trimmed = text.Trim();
+        // Names only. Enum.TryParse also accepts the underlying number, which would make "1" a
+        // silent alias for the first member -- an input the contract never documented and nobody
+        // could read back.
+        if (!char.IsAsciiLetter(trimmed[0]))
+        {
+            return null;
+        }
+
+        return Enum.TryParse<RetrievalScope>(trimmed, ignoreCase: true, out var scope) && Enum.IsDefined(scope)
             ? scope
             : null;
     }

@@ -225,7 +225,7 @@ public static class VehicleEndpoints
 
 /// <summary>A vehicle as the owner describes it, with the NHTSA names its records are filed under.</summary>
 public sealed record RegisterVehicleRequest(
-    string? Make, string? NhtsaModel, string? RecallModel, int ModelYear, string? DisplayName)
+    string? Make, string? NhtsaModel, string? RecallModel, int ModelYear, string? DisplayName, string? Vin = null)
 {
     /// <summary>Builds the registration, or returns the first thing wrong with the request.</summary>
     public bool TryBuildRegistration(out VehicleRegistration? registration, out string? problem)
@@ -244,6 +244,7 @@ public sealed record RegisterVehicleRequest(
             RecallModel = string.IsNullOrWhiteSpace(RecallModel) ? null : RecallModel.Trim().ToUpperInvariant(),
             ModelYear = ModelYear,
             DisplayName = DisplayName!.Trim(),
+            Vin = string.IsNullOrWhiteSpace(Vin) ? null : Vin.Trim().ToUpperInvariant(),
         };
         return true;
     }
@@ -263,6 +264,12 @@ public sealed record RegisterVehicleRequest(
         if (string.IsNullOrWhiteSpace(DisplayName))
         {
             return "A display name is required, for example \"2013 Explorer Sport\".";
+        }
+
+        // Optional, but a half-typed one is worse than none: it would decode to the wrong truck.
+        if (!string.IsNullOrWhiteSpace(Vin) && !VehicleVin.IsWellFormed(Vin))
+        {
+            return $"A VIN is {VehicleVin.Length} letters and digits, never {string.Join(", ", VehicleVin.ForbiddenLetters.ToCharArray())}. Leave it blank if you do not have it to hand.";
         }
 
         if (ModelYear < Vehicle.MinimumModelYear || ModelYear > Vehicle.MaximumModelYear)

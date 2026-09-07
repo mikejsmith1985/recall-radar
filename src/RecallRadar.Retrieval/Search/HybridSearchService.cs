@@ -4,6 +4,7 @@ using Microsoft.Extensions.AI;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
 using RecallRadar.Domain.Retrieval;
+using RecallRadar.Domain.Vehicles;
 using RecallRadar.Retrieval.Embeddings;
 using RecallRadar.Retrieval.Persistence;
 
@@ -131,6 +132,25 @@ public sealed class HybridSearchService(
             chunks = chunks.Where(chunk => kinds.Contains(chunk.Document!.Kind));
         }
 
+        // Narrowing to the owner's own version of the model. A record is only excluded when it
+        // actually disagrees: a complaint NHTSA could not decode, or a recall that has no VIN at
+        // all, stays in, because a campaign applies to a model rather than to one trim of it.
+        if (request.Trims == TrimScope.ThisTrim)
+        {
+            chunks = chunks.Where(chunk =>
+                chunk.Document!.TrimKey == null
+                || chunk.Document.Vehicle!.TrimKey == null
+                || chunk.Document.TrimKey == chunk.Document.Vehicle.TrimKey);
+            chunks = chunks.Where(chunk =>
+                chunk.Document!.EngineLitres == null
+                || chunk.Document.Vehicle!.EngineLitres == null
+                || chunk.Document.EngineLitres == chunk.Document.Vehicle.EngineLitres);
+            chunks = chunks.Where(chunk =>
+                chunk.Document!.EngineCylinders == null
+                || chunk.Document.Vehicle!.EngineCylinders == null
+                || chunk.Document.EngineCylinders == chunk.Document.Vehicle.EngineCylinders);
+        }
+
         if (request.Component is { } component)
         {
             chunks = chunks.Where(chunk => chunk.Document!.Component == component);
@@ -147,6 +167,22 @@ public sealed class HybridSearchService(
         }
 
         return chunks;
+    }
+
+    /// <summary>
+    /// How many of this vehicle's records belong to a different trim or engine.
+    /// </summary>
+    /// <remarks>
+    /// The number is what lets the page offer the wider search honestly. "Nothing for your truck,
+    /// but 385 records from other versions of this model" is a useful answer; an empty page is not.
+    /// Counted rather than fetched, because those records were not asked for.
+    /// </remarks>
+    public async Task<int> CountOtherTrimsAsync(SearchRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var everything = ApplyFilters(database.DocumentChunks.AsNoTracking(), request with { Trims = TrimScope.AllTrims });
+        var mine = ApplyFilters(database.DocumentChunks.AsNoTracking(), request with { Trims = TrimScope.ThisTrim });
+        return await everything.CountAsync(cancellationToken) - await mine.CountAsync(cancellationToken);
     }
 
     /// <summary>Loads the records behind the ranked chunk ids, preserving the ranked order.</summary>
@@ -171,6 +207,9 @@ public sealed class HybridSearchService(
                 chunk.Document.Title,
                 chunk.Document.Component,
                 chunk.Document.FiledOn,
+                chunk.Document.Trim,
+                chunk.Document.EngineLitres,
+                chunk.Document.EngineCylinders,
             })
             .ToDictionaryAsync(row => row.Id, cancellationToken);
 
@@ -183,7 +222,8 @@ public sealed class HybridSearchService(
                     var row = rows[entry.ChunkId];
                     return new SearchHit(
                         row.DocumentId, row.Id, row.Kind, row.ExternalId, row.Title, row.Component,
-                        row.FiledOn, SearchHit.BuildSnippet(row.Text), entry.Explanation);
+                        row.FiledOn, SearchHit.BuildSnippet(row.Text), entry.Explanation,
+                        VehicleFit.Create(row.Trim, row.EngineLitres, row.EngineCylinders));
                 }),
         ];
     }

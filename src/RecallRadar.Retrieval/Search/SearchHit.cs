@@ -2,6 +2,8 @@
 using RecallRadar.Domain.Retrieval;
 using RecallRadar.Retrieval.Persistence;
 
+using RecallRadar.Domain.Vehicles;
+
 namespace RecallRadar.Retrieval.Search;
 
 /// <summary>
@@ -17,7 +19,8 @@ public sealed record SearchHit(
     string Component,
     DateOnly? FiledOn,
     string Snippet,
-    RankExplanation Explanation)
+    RankExplanation Explanation,
+    VehicleFit Fit)
 {
     /// <summary>How much of a chunk is shown before it is cut at a word boundary.</summary>
     public const int SnippetLength = 240;

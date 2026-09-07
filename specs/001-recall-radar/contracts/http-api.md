@@ -22,7 +22,10 @@ migration this build needs. Either answers `503` with `status: "unavailable"`.
 ## POST /api/vehicles
 
 Request: `{ "make": "Ford", "nhtsaModel": "EXPLORER", "recallModel": null, "modelYear": 2013,
-"displayName": "2013 Explorer Sport" }`
+"displayName": "2013 Explorer Sport", "vin": null }`
+
+`vin` is optional and is the only thing that says which version of the model this vehicle is. A
+malformed one is a `400`: a half-typed VIN decodes to a different vehicle, which is worse than none.
 
 `recallModel` is only needed where NHTSA's two feeds disagree: complaints are filed against a body
 style (`F-150 SUPER CREW`) and recalls answer that with 400, so a truck needs both names.
@@ -38,6 +41,23 @@ validates the model name against NHTSA's own list, queues the work and answers i
   which was the name being reached for.
 - `503` problem when NHTSA's model list cannot be reached. The feed being down is not the caller's
   mistake, so it is not a 400.
+
+## Trims
+
+NHTSA files every version of a model under one name: a 2023 F-150 is `F-150 (SUPER CREW) GAS`
+whether it has a 2.7 litre V6 or the Raptor R's supercharged 5.2 V8. Each complaint carries an
+eleven-character VIN with the serial stripped, and its first eight characters — the descriptor —
+encode the series and engine. vPIC, NHTSA's own catalogue, decodes them.
+
+`GET /api/search` takes `trims=thisTrim|allTrims` (default `allTrims`). Under `thisTrim` a record is
+excluded only when it *disagrees* with the vehicle: a complaint NHTSA could not decode, or a recall
+that carries no VIN at all, stays in, because a campaign applies to a model rather than one trim of
+it. A vehicle whose own VIN has not been decoded narrows nothing.
+
+The response carries `trims` (which scope ran) and `otherTrims` — how many of this vehicle's records
+belong to a different version. That number means the same thing under either scope, so a page can
+read it without knowing which scope produced it. Each hit carries `trim`, or `null` when nothing
+decoded it.
 
 ## DELETE /api/loads/{id}
 

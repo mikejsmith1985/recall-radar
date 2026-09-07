@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Search can be confined to the vehicle's own trim and engine. NHTSA files every version of a model
+  under one name, so a 2023 F-150 covers a 2.7 litre V6 and the Raptor R's supercharged 5.2 V8
+  alike, and answering about one from the other's complaints is answering about a different truck.
+  Each complaint carries a VIN with the serial stripped, whose first eight characters encode the
+  series and engine; vPIC, NHTSA's own catalogue, decodes them. Measured on a real corpus: of 405
+  complaints filed under the 2023 F-150 SuperCrew, **20** are a Raptor of any kind and **none** is a
+  Raptor R.
+- A vehicle can be registered with its VIN, and `decode` works out what every stored complaint
+  belongs to. Answers are remembered per descriptor and model year, so a vehicle costs about fifty
+  requests once rather than one per record, and a re-load costs none.
+- The search page offers the wider search rather than an empty page, says how many records belong to
+  other versions, and labels each result with the version it was filed under. Before a search has
+  counted, it says nothing: zero would be a claim nothing had made.
 - A finished load can be dismissed from the recent-loads table, through a new
   `DELETE /api/loads/{id}`. The history exists so a refresh that failed overnight is visible rather
   than silent, which means it fills with rows nobody needs once they have been read. A load still

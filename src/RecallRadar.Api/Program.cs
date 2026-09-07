@@ -52,6 +52,7 @@ builder.Services.Configure<ScheduledRefreshOptions>(builder.Configuration.GetSec
 builder.Services.AddNhtsaClients();
 builder.Services.AddScoped<IngestService>();
 builder.Services.AddScoped<EmbedCommand>();
+builder.Services.AddScoped<DecodeCommand>();
 builder.Services.AddScoped<IngestJobQueue>();
 
 // The browser fixture must not reach NHTSA, so neither background service runs there.

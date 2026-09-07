@@ -1,6 +1,7 @@
 // Seeds the throwaway database the browser suite runs against, so a green run means something.
 using Microsoft.EntityFrameworkCore;
 using RecallRadar.Retrieval.Evaluation;
+using RecallRadar.Domain.Vehicles;
 using RecallRadar.Retrieval.Persistence;
 
 namespace RecallRadar.Api.Fixtures;
@@ -41,6 +42,20 @@ public static class UxFixtureSeeder
     /// </summary>
     public const string DismissableLoadVehicleName = "1998 Ranger (dismiss me)";
 
+    /// <summary>
+    /// The fixture vehicle carries a VIN so the browser suite can exercise the trim switch, which is
+    /// hidden entirely without one. Not a real vehicle's number: the check digit is deliberately
+    /// wrong, and nothing here ever reaches vPIC.
+    /// </summary>
+    public const string VehicleVin = "1FMHK8F83DGA00001";
+
+    /// <summary>What the fixture vehicle's VIN stands for, and what most of its complaints share.</summary>
+    public static readonly VehicleFit VehicleTrim = VehicleFit.Create("Sport", 3.5m, 6);
+
+    /// <summary>One complaint belongs to another engine, so the narrow search has something to leave out.</summary>
+    public const string OtherTrimExternalId = "11024727";
+    public static readonly VehicleFit OtherTrim = VehicleFit.Create("Base", 2.0m, 4);
+
     private static readonly (string ExternalId, string Component, string Body)[] Complaints =
     [
         ("11257832", Component,
@@ -66,7 +81,8 @@ public static class UxFixtureSeeder
             return;
         }
 
-        var vehicle = Vehicle.Create("FORD", "EXPLORER", 2013, VehicleDisplayName);
+        var vehicle = Vehicle.Create("FORD", "EXPLORER", 2013, VehicleDisplayName, vin: VehicleVin);
+        vehicle.DescribeFit(VehicleTrim);
         database.Vehicles.Add(vehicle);
         await database.SaveChangesAsync(cancellationToken);
 
@@ -83,8 +99,13 @@ public static class UxFixtureSeeder
         var filedOn = new DateOnly(2016, 5, 1);
         foreach (var (externalId, component, body) in Complaints)
         {
-            await AddDocumentAsync(
+            var documentId = await AddDocumentAsync(
                 database, SourceKind.Complaint, externalId, vehicleId, component, filedOn, externalId, body, cancellationToken);
+            var document = await database.SourceDocuments.SingleAsync(
+                candidate => candidate.Id == documentId, cancellationToken);
+            document.DescribeFit(
+                "1FMHK8F8", externalId == OtherTrimExternalId ? OtherTrim : VehicleTrim);
+            await database.SaveChangesAsync(cancellationToken);
             filedOn = filedOn.AddMonths(2);
         }
     }
