@@ -1,5 +1,5 @@
 // The explainable-search page: a query, a ranking mode, and results that each say how they were found.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ApiError, type ApiClient, type RetrievalMode, type SearchHit } from "../api/client";
 import { chooseDefaultMode, ModeSwitch } from "../components/ModeSwitch";
 import { ResultCard } from "../components/ResultCard";
@@ -15,10 +15,21 @@ export const SelectVehiclePrompt = "Pick a vehicle above to search its records."
 
 export function SearchPage({ client, vehicleId, isEmbeddingsAvailable }: SearchPageProps) {
   const [mode, setMode] = useState<RetrievalMode>(() => chooseDefaultMode(isEmbeddingsAvailable));
+  const [isModePinned, setIsModePinned] = useState(false);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Health answers after this page has already rendered, so the mode chosen at mount was decided
+  // without knowing whether the server can do meaning search at all. Left alone, a server that
+  // supports every mode would sit in keyword mode because of an answer that had not arrived yet.
+  // A mode somebody picked, or one the server refused, is pinned and never reconsidered.
+  useEffect(() => {
+    if (!isModePinned) {
+      setMode(chooseDefaultMode(isEmbeddingsAvailable));
+    }
+  }, [isEmbeddingsAvailable, isModePinned]);
 
   async function runSearch(query: string, requestedMode: RetrievalMode) {
     if (vehicleId === null) {
@@ -35,6 +46,7 @@ export function SearchPage({ client, vehicleId, isEmbeddingsAvailable }: SearchP
       setErrorMessage(error instanceof Error ? error.message : "Search failed.");
       if (error instanceof ApiError && error.isEmbeddingsUnavailable) {
         setMode("sparse");
+        setIsModePinned(true);
       }
     } finally {
       setIsLoading(false);
@@ -43,6 +55,7 @@ export function SearchPage({ client, vehicleId, isEmbeddingsAvailable }: SearchP
 
   function handleModeChange(nextMode: RetrievalMode) {
     setMode(nextMode);
+    setIsModePinned(true);
     if (lastQuery !== null) {
       void runSearch(lastQuery, nextMode);
     }

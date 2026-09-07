@@ -6,6 +6,7 @@ using RecallRadar.Api.Config;
 using RecallRadar.Api.Endpoints;
 using RecallRadar.Api.Fixtures;
 using RecallRadar.Api.Loading;
+using RecallRadar.Api.Persistence;
 using RecallRadar.Ingest;
 using RecallRadar.Ingest.Commands;
 using RecallRadar.Ingest.Config;
@@ -20,6 +21,10 @@ var builder = WebApplication.CreateBuilder(args);
 // The browser suite runs against this environment: a throwaway seeded database and a scripted
 // model, so a run costs nothing, finishes quickly, and asserts the same thing every time.
 var isBrowserFixture = builder.Environment.IsEnvironment(UxFixtureEnvironment.Name);
+if (isBrowserFixture)
+{
+    builder.Configuration.AddInMemoryCollection(UxFixtureEnvironment.ConfigurationOverrides);
+}
 
 var settings = AppSettings.Load(
     builder.Configuration[AppSettings.ConnectionConfigurationKey],
@@ -28,6 +33,7 @@ var settings = AppSettings.Load(
 builder.Services.AddSingleton(settings);
 builder.Services.AddDbContext<RecallRadarDbContext>(options =>
     RecallRadarDbContextFactory.Configure(options, settings.ConnectionString));
+builder.Services.Configure<SchemaOptions>(builder.Configuration.GetSection(SchemaOptions.SectionName));
 
 // Voyage when a key is configured, otherwise a generator that refuses. Refusing is what lets the
 // search endpoint answer 409 for the modes needing embeddings while keyword search keeps working.
@@ -74,6 +80,13 @@ var app = builder.Build();
 if (isBrowserFixture)
 {
     await UxFixtureEnvironment.PrepareAsync(app.Services, app.Lifetime.ApplicationStopping);
+}
+else
+{
+    // The API owns tables no other component creates, so it brings the database up to date itself
+    // rather than trusting that somebody ran the ingest command line first. Skipped for the browser
+    // fixture only because that path has already built its own throwaway database above.
+    await SchemaMigrator.ApplyAsync(app.Services, app.Lifetime.ApplicationStopping);
 }
 
 // The built client is served from the same origin as the API, so a browser test navigates to "/"

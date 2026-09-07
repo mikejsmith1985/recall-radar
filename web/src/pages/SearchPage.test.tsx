@@ -36,6 +36,28 @@ describe("SearchPage", () => {
     expect(requests).toEqual([{ vehicleId: 7, query: "steering locks", mode: "hybrid" }]);
   });
 
+  it("moves to the combined default once health says meaning search is available", async () => {
+    // Health answers after this page mounts. Sampling it once at mount left the page in keyword
+    // mode on a server that could do every mode, which is what the browser suite caught.
+    const client = createClient((params) => Promise.resolve({ mode: params.mode, hits: [hit], scope: "all" as const }));
+    const { rerender } = render(<SearchPage client={client} vehicleId={7} isEmbeddingsAvailable={false} />);
+    expect(screen.getByTestId("mode-sparse").getAttribute("aria-checked")).toBe("true");
+
+    rerender(<SearchPage client={client} vehicleId={7} isEmbeddingsAvailable />);
+
+    await waitFor(() => expect(screen.getByTestId("mode-hybrid").getAttribute("aria-checked")).toBe("true"));
+  });
+
+  it("leaves a mode somebody picked alone when health arrives afterwards", async () => {
+    const client = createClient((params) => Promise.resolve({ mode: params.mode, hits: [hit], scope: "all" as const }));
+    const { rerender } = render(<SearchPage client={client} vehicleId={7} isEmbeddingsAvailable />);
+    fireEvent.click(screen.getByTestId("mode-sparse"));
+
+    rerender(<SearchPage client={client} vehicleId={7} isEmbeddingsAvailable />);
+
+    await waitFor(() => expect(screen.getByTestId("mode-sparse").getAttribute("aria-checked")).toBe("true"));
+  });
+
   it("re-runs the last query when the mode changes", async () => {
     const requests: SearchParams[] = [];
     const client = createClient((params) => {

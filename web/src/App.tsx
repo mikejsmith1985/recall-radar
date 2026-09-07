@@ -25,6 +25,17 @@ const Views: { view: View; label: string }[] = [
 /** Without a health report the safe assumption is that neither optional service is available. */
 export const OfflineHealth: HealthReport = { status: "unknown", database: "unknown", embeddings: "unavailable", answering: "unavailable" };
 
+/**
+ * What to say when the server has a database it cannot use. Health reported this field long before
+ * anything showed it, so a database that was behind first announced itself as "Internal Server
+ * Error" on the add-vehicle form. Only states the server actually names appear here: "unknown"
+ * means health has not answered yet, which is not worth alarming anybody about.
+ */
+export const DatabaseWarnings: Record<string, string> = {
+  unavailable: "The server cannot reach its database. Nothing will load until it can.",
+  "schema-outdated": "The database is behind this build of the server. Adding or loading a vehicle will fail until its migrations are applied.",
+};
+
 export function App({ client }: AppProps) {
   const [view, setView] = useState<View>("search");
   const [health, setHealth] = useState<HealthReport>(OfflineHealth);
@@ -61,6 +72,7 @@ export function App({ client }: AppProps) {
     setVehiclesVersion((version) => version + 1);
   }, []);
 
+  const databaseWarning = DatabaseWarnings[health.database];
   const isEmbeddingsAvailable = health.embeddings === "ok";
   const isAnsweringAvailable = health.answering === "ok";
 
@@ -77,6 +89,7 @@ export function App({ client }: AppProps) {
         </nav>
       </header>
       <section className="panel">
+        {databaseWarning && <p className="error-state" data-testid="database-warning">{databaseWarning}</p>}
         {loadError ? <p className="error-state" data-testid="vehicle-load-error">{loadError}</p> : <VehiclePicker vehicles={vehicles} selectedVehicleId={selectedVehicleId} onSelect={setSelectedVehicleId} />}
         <AddVehicleForm client={client} onLoadStarted={setActiveLoad} />
         {activeLoad && <LoadStatus client={client} load={activeLoad} onFinished={handleLoadFinished} />}
