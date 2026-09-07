@@ -11,9 +11,29 @@ interface RecentLoadsProps {
 /** How many to show. Enough to see last night's refresh, not a log. */
 export const VisibleLoadCount = 5;
 
-/** The date as a person reads it, or the queued time when a load has not finished. */
-export function describeWhen(load: Load): string {
+/** The moment worth showing: when it ended, else when it began, else when it was asked for. */
+export function chooseWhen(load: Load): string {
   return load.finishedAt ?? load.startedAt ?? load.queuedAt;
+}
+
+/**
+ * The date as a person reads it, in their own timezone.
+ *
+ * The server speaks ISO 8601 with microseconds and an offset, which is right for a wire format and
+ * unreadable in a table. An unparseable value is shown unchanged rather than hidden, because a
+ * timestamp nobody can format is still evidence something is wrong upstream.
+ */
+export function describeWhen(load: Load): string {
+  const when = new Date(chooseWhen(load));
+  if (Number.isNaN(when.getTime())) {
+    return chooseWhen(load);
+  }
+  return when.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export function RecentLoads({ client, refreshToken }: RecentLoadsProps) {
@@ -63,7 +83,7 @@ export function RecentLoads({ client, refreshToken }: RecentLoadsProps) {
             <th scope="row">{load.displayName}</th>
             <td>{load.state === "failed" ? <span className="error-state">{load.message ?? "failed"}</span> : load.state}</td>
             <td>{load.trigger}</td>
-            <td>{describeWhen(load)}</td>
+            <td className="when">{describeWhen(load)}</td>
           </tr>
         ))}
       </tbody>

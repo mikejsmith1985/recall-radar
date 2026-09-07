@@ -49,6 +49,30 @@ describe("App", () => {
     expect((screen.getByTestId("mode-dense") as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("holds the vehicle list's space while it loads, so nothing below it moves", async () => {
+    // Rendering "no vehicles yet" first and the cards second moved the button underneath at the
+    // moment somebody was clicking it. The browser suite caught that as a click landing on nothing.
+    let answer: (vehicles: Vehicle[]) => void = () => undefined;
+    const pending = new Promise<Vehicle[]>((resolve) => {
+      answer = resolve;
+    });
+    render(<App client={createClient(healthy, () => pending)} />);
+
+    expect(screen.getByTestId("vehicle-picker-loading")).toBeTruthy();
+    expect(screen.queryByTestId("vehicle-picker-empty")).toBeNull();
+
+    answer(vehicles);
+
+    await screen.findByTestId("vehicle-option-1");
+    expect(screen.queryByTestId("vehicle-picker-loading")).toBeNull();
+  });
+
+  it("says there are no vehicles only once the server has actually said so", async () => {
+    render(<App client={createClient(healthy, () => Promise.resolve([]))} />);
+
+    expect(await screen.findByTestId("vehicle-picker-empty")).toBeTruthy();
+  });
+
   it("says so when the database is behind the server it belongs to", async () => {
     // This state reached a user as a bare "Internal Server Error" on the add-vehicle form, because
     // health had reported it all along and nothing on the page read the field.

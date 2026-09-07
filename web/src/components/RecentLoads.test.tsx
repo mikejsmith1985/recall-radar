@@ -1,6 +1,6 @@
 // Checks the recent-loads table makes an overnight failure visible rather than silent.
 import { render, screen, waitFor } from "@testing-library/react";
-import { describeWhen, RecentLoads, VisibleLoadCount } from "./RecentLoads";
+import { chooseWhen, describeWhen, RecentLoads, VisibleLoadCount } from "./RecentLoads";
 import { createStubClient } from "../api/stubClient";
 import type { ApiClient, Load } from "../api/client";
 
@@ -84,8 +84,23 @@ describe("RecentLoads", () => {
   });
 
   it("dates a load by when it ended, falling back while it has not", () => {
-    expect(describeWhen(succeeded)).toBe(succeeded.finishedAt);
-    expect(describeWhen({ ...succeeded, finishedAt: null })).toBe(succeeded.startedAt);
-    expect(describeWhen({ ...succeeded, finishedAt: null, startedAt: null })).toBe(succeeded.queuedAt);
+    expect(chooseWhen(succeeded)).toBe(succeeded.finishedAt);
+    expect(chooseWhen({ ...succeeded, finishedAt: null })).toBe(succeeded.startedAt);
+    expect(chooseWhen({ ...succeeded, finishedAt: null, startedAt: null })).toBe(succeeded.queuedAt);
+  });
+
+  it("shows a date somebody can read rather than the wire format", () => {
+    // The server sends ISO 8601 with microseconds and an offset, which is right on the wire and
+    // unreadable in a table.
+    const shown = describeWhen(succeeded);
+
+    expect(shown).not.toContain("T");
+    expect(shown).not.toContain(succeeded.finishedAt);
+    expect(shown.length).toBeGreaterThan(0);
+  });
+
+  it("shows a timestamp it cannot read unchanged, rather than hiding it", () => {
+    // A date nobody can format is still evidence that something upstream is wrong.
+    expect(describeWhen({ ...succeeded, finishedAt: "not a date" })).toBe("not a date");
   });
 });

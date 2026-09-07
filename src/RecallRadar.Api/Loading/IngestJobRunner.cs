@@ -118,7 +118,7 @@ public sealed class IngestJobRunner(
         {
             // Recorded rather than rethrown: a job that vanished is indistinguishable from one
             // still running, and the person who asked for it deserves the reason.
-            job.Fail(failure.Message, clock.GetUtcNow());
+            job.Fail(LoadFailureMessage.Describe(failure), clock.GetUtcNow());
             await database.SaveChangesAsync(CancellationToken.None);
             logger.LogWarning(failure, "Load of {Vehicle} failed.", job.DisplayName);
         }

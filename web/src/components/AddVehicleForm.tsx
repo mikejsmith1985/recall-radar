@@ -5,6 +5,12 @@ import type { ApiClient, Load, RegisterVehicleRequest } from "../api/client";
 interface AddVehicleFormProps {
   client: ApiClient;
   onLoadStarted: (load: Load) => void;
+  /**
+   * Whether the form is showing. Held by the caller so the button that opens it can sit above the
+   * vehicle list, where nothing that loads later can move it out from under a pointer.
+   */
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
 }
 
 /** NHTSA files records a model year ahead of the calendar, and no further. */
@@ -38,11 +44,10 @@ const EmptyForm: RegisterVehicleRequest = {
   displayName: "",
 };
 
-export function AddVehicleForm({ client, onLoadStarted }: AddVehicleFormProps) {
+export function AddVehicleForm({ client, onLoadStarted, isOpen, onOpenChange }: AddVehicleFormProps) {
   const [form, setForm] = useState<RegisterVehicleRequest>(EmptyForm);
   const [problem, setProblem] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
   const [knownModels, setKnownModels] = useState<string[]>([]);
 
   // NHTSA's vocabulary is not the one on the back of the car: a Mach-E is filed as
@@ -86,7 +91,7 @@ export function AddVehicleForm({ client, onLoadStarted }: AddVehicleFormProps) {
       // decides what to show while it runs.
       onLoadStarted(await client.registerVehicle({ ...form, recallModel: form.recallModel?.trim() || null }));
       setForm(EmptyForm);
-      setIsOpen(false);
+      onOpenChange(false);
     } catch (error: unknown) {
       // NHTSA's own rejection names the model strings it does know, which is the useful part.
       setProblem(error instanceof Error ? error.message : "The vehicle could not be registered.");
@@ -96,11 +101,7 @@ export function AddVehicleForm({ client, onLoadStarted }: AddVehicleFormProps) {
   }
 
   if (!isOpen) {
-    return (
-      <button type="button" className="link-button" data-testid="add-vehicle-open" onClick={() => setIsOpen(true)}>
-        Add a vehicle
-      </button>
-    );
+    return null;
   }
 
   return (
@@ -165,7 +166,7 @@ export function AddVehicleForm({ client, onLoadStarted }: AddVehicleFormProps) {
         <button type="submit" disabled={isSending} data-testid="add-vehicle-submit">
           {isSending ? "Starting…" : "Add and load"}
         </button>
-        <button type="button" className="link-button" data-testid="add-vehicle-cancel" onClick={() => setIsOpen(false)}>
+        <button type="button" className="link-button" data-testid="add-vehicle-cancel" onClick={() => onOpenChange(false)}>
           Cancel
         </button>
       </div>

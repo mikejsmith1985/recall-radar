@@ -17,7 +17,10 @@ public sealed class NoMutatingVerbsTests
         "HttpMethod.Post", "HttpMethod.Put", "HttpMethod.Delete", "HttpMethod.Patch",
         "PostAsync", "PutAsync", "DeleteAsync", "PatchAsync", "SendAsync", "PostAsJsonAsync", "PutAsJsonAsync",
     ];
-    private static readonly string[] AllowedPublicMethodPrefixes = ["Get", "Download", "Parse", "Build", "Add"];
+    // "Is" joins the list for predicates over a response body already in hand. The rule exists to
+    // stop a method promising to change something at NHTSA; a boolean question about bytes we have
+    // already been given cannot. Post/Put/Delete/Send remain forbidden by name and by source scan.
+    private static readonly string[] AllowedPublicMethodPrefixes = ["Get", "Download", "Parse", "Build", "Add", "Is"];
 
     [Fact]
     public void NhtsaSourceFolder_ContainsNoMutatingHttpCall()
