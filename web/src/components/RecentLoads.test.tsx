@@ -45,6 +45,9 @@ describe("RecentLoads", () => {
 
     await waitFor(() => expect(screen.getByTestId("recent-load-2").textContent).toContain("NHTSA returned 500."));
     expect(screen.getByTestId("recent-load-2").getAttribute("data-state")).toBe("failed");
+    // Not the page's alert box: inside a table cell it burst out of the row it belongs to.
+    expect(screen.getByTestId("recent-load-2").querySelector(".error-state")).toBeNull();
+    expect(screen.getByTestId("recent-load-2").querySelector(".failure-note")).toBeTruthy();
   });
 
   it("says so when nothing has been loaded through the app", async () => {
