@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A finished load can be dismissed from the recent-loads table, through a new
+  `DELETE /api/loads/{id}`. The history exists so a refresh that failed overnight is visible rather
+  than silent, which means it fills with rows nobody needs once they have been read. A load still
+  queued or running answers 409: the runner claims jobs by row, so removing one underneath it would
+  leave work half done with nothing recording that it started. The row is a log entry, not a record
+  of the car, so the vehicle and everything it loaded are untouched.
 - A design system: colour, spacing, type and radius tokens that every component draws from, a dark
   theme that follows the operating system, one keyboard-only focus ring, and motion that anybody who
   has asked for less of it does not get. Three classes the markup already used had no rules at all,

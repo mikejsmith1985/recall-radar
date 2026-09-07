@@ -18,6 +18,7 @@ export function createStubClient(overrides: Partial<ApiClient> = {}): ApiClient 
     refreshVehicle: unsupported("refreshVehicle"),
     getLoad: unsupported("getLoad"),
     listLoads: unsupported("listLoads"),
+    dismissLoad: unsupported("dismissLoad"),
     search: unsupported("search"),
     ask: unsupported("ask"),
     getDocument: unsupported("getDocument"),

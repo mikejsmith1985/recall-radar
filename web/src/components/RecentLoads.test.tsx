@@ -1,5 +1,5 @@
 // Checks the recent-loads table makes an overnight failure visible rather than silent.
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { chooseWhen, describeWhen, RecentLoads, VisibleLoadCount } from "./RecentLoads";
 import { createStubClient } from "../api/stubClient";
 import type { ApiClient, Load } from "../api/client";
@@ -48,6 +48,56 @@ describe("RecentLoads", () => {
     // Not the page's alert box: inside a table cell it burst out of the row it belongs to.
     expect(screen.getByTestId("recent-load-2").querySelector(".error-state")).toBeNull();
     expect(screen.getByTestId("recent-load-2").querySelector(".failure-note")).toBeTruthy();
+  });
+
+  it("dismisses a load and takes its row away", async () => {
+    const dismissed: number[] = [];
+    const client = createStubClient({
+      listLoads: () => Promise.resolve([succeeded, failed]),
+      dismissLoad: (loadId: number) => {
+        dismissed.push(loadId);
+        return Promise.resolve();
+      },
+    });
+    render(<RecentLoads client={client} refreshToken={0} />);
+    await screen.findByTestId("recent-load-2");
+
+    fireEvent.click(screen.getByTestId("dismiss-load-2"));
+
+    await waitFor(() => expect(screen.queryByTestId("recent-load-2")).toBeNull());
+    expect(dismissed).toEqual([2]);
+    expect(screen.getByTestId("recent-load-1")).toBeTruthy();
+  });
+
+  it("offers no dismissal for a load that has not finished", async () => {
+    // The runner claims jobs by row, so one still going is the server's to remove, not this table's.
+    const running: Load = { ...succeeded, id: 5, state: "running", isFinished: false, finishedAt: null };
+    render(<RecentLoads client={createClient(() => Promise.resolve([running]))} refreshToken={0} />);
+    await screen.findByTestId("recent-load-5");
+
+    expect(screen.queryByTestId("dismiss-load-5")).toBeNull();
+  });
+
+  it("puts the row back and says why when the server refuses, without hiding the history", async () => {
+    const client = createStubClient({
+      listLoads: () => Promise.resolve([failed]),
+      dismissLoad: () => Promise.reject(new Error("Load 2 has not finished.")),
+    });
+    render(<RecentLoads client={client} refreshToken={0} />);
+    await screen.findByTestId("recent-load-2");
+
+    fireEvent.click(screen.getByTestId("dismiss-load-2"));
+
+    await waitFor(() => expect(screen.getByTestId("dismiss-error").textContent).toContain("has not finished"));
+    expect(screen.getByTestId("recent-load-2")).toBeTruthy();
+  });
+
+  it("names the load in the button, so the choice is unambiguous without the row", async () => {
+    render(<RecentLoads client={createClient(() => Promise.resolve([failed]))} refreshToken={0} />);
+    await screen.findByTestId("recent-load-2");
+
+    expect(screen.getByTestId("dismiss-load-2").getAttribute("aria-label"))
+      .toBe("Dismiss the failed load of 2013 Explorer Sport");
   });
 
   it("says so when nothing has been loaded through the app", async () => {

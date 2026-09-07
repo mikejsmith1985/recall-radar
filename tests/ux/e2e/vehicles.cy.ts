@@ -31,6 +31,25 @@ describe("adding and loading a vehicle", () => {
     cy.get('[data-testid="add-vehicle-open"]').should("exist");
   });
 
+  it("dismisses a finished load, and the row stays gone after a reload", () => {
+    // A row nobody needs any more should not need a database to remove it. The fixture seeds one
+    // load for this to remove, because a dismissal is permanent and every other spec reads the
+    // same table.
+    cy.get('[data-testid="recent-loads-toggle"]').realClick();
+    cy.contains('[data-testid="recent-loads"] tr', "dismiss me")
+      .invoke("attr", "data-testid")
+      .then((rowTestId) => {
+        const loadId = rowTestId!.replace("recent-load-", "");
+        cy.get(`[data-testid="dismiss-load-${loadId}"]`).realClick();
+        cy.get(`[data-testid="recent-load-${loadId}"]`).should("not.exist");
+
+        cy.reload();
+        cy.get('[data-testid="recent-loads-toggle"]').realClick();
+        cy.get('[data-testid="recent-loads"]').should("exist");
+        cy.get(`[data-testid="recent-load-${loadId}"]`).should("not.exist");
+      });
+  });
+
   it("shows past loads, including a scheduled one that failed", () => {
     // A refresh that failed overnight has to be findable, or the records quietly go stale.
     cy.get('[data-testid="recent-loads-toggle"]').realClick();

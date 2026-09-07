@@ -39,6 +39,18 @@ validates the model name against NHTSA's own list, queues the work and answers i
 - `503` problem when NHTSA's model list cannot be reached. The feed being down is not the caller's
   mistake, so it is not a 400.
 
+## DELETE /api/loads/{id}
+
+Removes a finished load from the history. The history exists so a refresh that failed overnight is
+visible rather than silent, which means it fills with rows nobody needs once they have been read;
+this is how somebody says they have read one.
+
+- `204` when the load is gone. The vehicle and everything it loaded are untouched: the row is a log
+  entry, not a record of the car.
+- `409` problem when the load is still queued or running. The runner claims jobs by row, so removing
+  one underneath it would leave work half done with nothing recording that it started.
+- `404` problem when no load has that id.
+
 ## GET /api/nhtsa/models
 
 Query: `make` and `modelYear`, both required.

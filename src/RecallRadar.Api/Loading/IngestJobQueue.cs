@@ -75,6 +75,33 @@ public sealed class IngestJobQueue(RecallRadarDbContext database, TimeProvider c
         database.IngestJobs.AsNoTracking().FirstOrDefaultAsync(job => job.Id == jobId, cancellationToken);
 
     /// <summary>
+    /// Removes a finished load from the history, and reports what it did.
+    /// </summary>
+    /// <remarks>
+    /// A load that is queued or running is refused rather than deleted: the runner claims jobs by
+    /// row, so removing one underneath it would leave work half done with nothing recording it. The
+    /// row is a log entry, not a record of the vehicle, so a finished one is deleted outright rather
+    /// than hidden behind a flag that would make the list disagree with the table.
+    /// </remarks>
+    public async Task<DismissOutcome> DismissAsync(long jobId, CancellationToken cancellationToken)
+    {
+        var job = await database.IngestJobs.FirstOrDefaultAsync(candidate => candidate.Id == jobId, cancellationToken);
+        if (job is null)
+        {
+            return DismissOutcome.NotFound;
+        }
+
+        if (!job.IsFinished)
+        {
+            return DismissOutcome.StillRunning;
+        }
+
+        database.IngestJobs.Remove(job);
+        await database.SaveChangesAsync(cancellationToken);
+        return DismissOutcome.Dismissed;
+    }
+
+    /// <summary>
     /// True when this vehicle already has a load queued or running. Asking twice for the same
     /// vehicle should join the load in progress, not start a second one against the same feeds.
     /// </summary>
@@ -87,4 +114,12 @@ public sealed class IngestJobQueue(RecallRadarDbContext database, TimeProvider c
                 && (job.State == IngestJobState.Queued || job.State == IngestJobState.Running),
             cancellationToken);
     }
+}
+
+/// <summary>What happened when a load was asked to be dismissed.</summary>
+public enum DismissOutcome
+{
+    Dismissed = 1,
+    NotFound = 2,
+    StillRunning = 3,
 }

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using RecallRadar.Api.Config;
 using RecallRadar.Api.Endpoints;
+using RecallRadar.Api.Loading;
 using RecallRadar.Integration.Ingest;
 using RecallRadar.Retrieval.Persistence;
 
@@ -211,6 +212,83 @@ public sealed class VehicleEndpointsTests(PostgresFixture postgres) : IDisposabl
         await client.PostAsJsonAsync("/api/vehicles", BuildRequest(), TestContext.Current.CancellationToken);
 
         Assert.All(_nhtsa.ReceivedMethods, method => Assert.Equal("GET", method));
+    }
+
+    [Fact]
+    public async Task Dismiss_RemovesAFinishedLoadFromTheHistory()
+    {
+        // The history fills with rows once they have been read; dismissing one is how somebody says
+        // they have read it.
+        using var client = CreateClient();
+        var finished = await StoreFinishedLoadAsync();
+
+        var response = await client.DeleteAsync($"/api/loads/{finished}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var listed = await client.GetFromJsonAsync<LoadResponse[]>("/api/loads", TestContext.Current.CancellationToken);
+        Assert.DoesNotContain(listed!, load => load.Id == finished);
+        await using var context = postgres.CreateContext();
+        Assert.False(await context.IngestJobs.AnyAsync(job => job.Id == finished, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Dismiss_RefusesALoadThatHasNotFinished()
+    {
+        // The runner claims jobs by row. Removing one underneath it would leave work half done with
+        // nothing recording that it ever started.
+        using var client = CreateClient();
+        var queued = await client.PostAsJsonAsync("/api/vehicles", BuildRequest(), TestContext.Current.CancellationToken);
+        var load = await queued.Content.ReadFromJsonAsync<LoadResponse>(TestContext.Current.CancellationToken);
+
+        var response = await client.DeleteAsync($"/api/loads/{load!.Id}", TestContext.Current.CancellationToken);
+        var problem = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains("has not finished", problem, StringComparison.Ordinal);
+        await using var context = postgres.CreateContext();
+        Assert.True(await context.IngestJobs.AnyAsync(job => job.Id == load.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Dismiss_SaysSoWhenThereIsNoSuchLoad()
+    {
+        using var client = CreateClient();
+
+        var response = await client.DeleteAsync("/api/loads/999999", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Dismiss_LeavesTheVehicleAndItsRecordsAlone()
+    {
+        // The row is a log entry, not the vehicle. Dismissing it must not lose anything loaded.
+        using var client = CreateClient();
+        var finished = await StoreFinishedLoadAsync();
+        await using var before = postgres.CreateContext();
+        var vehicleCount = await before.Vehicles.CountAsync(TestContext.Current.CancellationToken);
+
+        await client.DeleteAsync($"/api/loads/{finished}", TestContext.Current.CancellationToken);
+
+        await using var after = postgres.CreateContext();
+        Assert.Equal(vehicleCount, await after.Vehicles.CountAsync(TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>Stores a load that has already finished, which is the only kind that can be dismissed.</summary>
+    private async Task<long> StoreFinishedLoadAsync()
+    {
+        await using var context = postgres.CreateContext();
+        // The request record carries nullable strings because it arrives from JSON; this one is
+        // built here, so its fields are known to be set.
+        var request = BuildRequest();
+        var job = IngestJob.Queue(
+            request.Make!, request.NhtsaModel!, request.RecallModel, request.ModelYear, request.DisplayName!,
+            IngestTrigger.Manual, DateTimeOffset.UtcNow);
+        job.Start(DateTimeOffset.UtcNow);
+        job.Fail("NHTSA did not answer in time.", DateTimeOffset.UtcNow);
+        context.IngestJobs.Add(job);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return job.Id;
     }
 
     private static RegisterVehicleRequest BuildRequest() => new(

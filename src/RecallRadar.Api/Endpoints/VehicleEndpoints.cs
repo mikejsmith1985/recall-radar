@@ -24,6 +24,8 @@ public static class VehicleEndpoints
     private const string UnknownModelTitle = "Unknown NHTSA model";
     private const string UnknownVehicleTitle = "Unknown vehicle";
     private const string FeedUnavailableTitle = "NHTSA unavailable";
+    private const string UnknownLoadTitle = "Unknown load";
+    private const string LoadUnfinishedTitle = "Load still running";
 
     /// <summary>
     /// How many known model names to suggest when one is rejected. Few, because they are ranked
@@ -39,6 +41,7 @@ public static class VehicleEndpoints
         endpoints.MapPost("/api/vehicles/{id:int}/refresh", RefreshAsync);
         endpoints.MapGet("/api/loads/{id:long}", ReadLoadAsync);
         endpoints.MapGet("/api/loads", ListLoadsAsync);
+        endpoints.MapDelete("/api/loads/{id:long}", DismissLoadAsync);
         endpoints.MapGet("/api/nhtsa/models", ListNhtsaModelsAsync);
         return endpoints;
     }
@@ -113,6 +116,29 @@ public static class VehicleEndpoints
     {
         var job = await queue.FindAsync(id, cancellationToken);
         return job is null ? Results.NotFound() : Results.Ok(LoadResponse.From(job));
+    }
+
+    /// <summary>Removes a finished load from the history.</summary>
+    /// <remarks>
+    /// The history exists so a refresh that failed overnight is visible rather than silent, which
+    /// means it fills with rows nobody needs any more once they have been read. Dismissing one is
+    /// how somebody says they have read it. A load still queued or running answers 409: the runner
+    /// claims jobs by row, and removing one underneath it would leave work half done.
+    /// </remarks>
+    private static async Task<IResult> DismissLoadAsync(
+        long id, [FromServices] IngestJobQueue queue, CancellationToken cancellationToken)
+    {
+        var outcome = await queue.DismissAsync(id, cancellationToken);
+        return outcome switch
+        {
+            DismissOutcome.Dismissed => Results.NoContent(),
+            DismissOutcome.StillRunning => Results.Problem(
+                detail: $"Load {id} has not finished. A load can be dismissed once it has.",
+                statusCode: StatusCodes.Status409Conflict, title: LoadUnfinishedTitle),
+            _ => Results.Problem(
+                detail: $"No load with id {id} exists.",
+                statusCode: StatusCodes.Status404NotFound, title: UnknownLoadTitle),
+        };
     }
 
     /// <summary>Recent loads, newest first, so the page can show what is happening without an id.</summary>
