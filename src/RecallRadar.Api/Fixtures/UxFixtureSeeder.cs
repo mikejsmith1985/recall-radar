@@ -34,6 +34,13 @@ public static class UxFixtureSeeder
     /// <summary>Why the seeded load failed. Shown in the table, so a silent failure is impossible.</summary>
     public const string FailedLoadMessage = "NHTSA returned 500 for the recalls feed.";
 
+    /// <summary>
+    /// A load seeded purely to be dismissed. The dismissal spec removes a row for good, so without
+    /// one of its own it would take the failed load with it and every spec that runs afterwards
+    /// would be testing a database the one before it had edited.
+    /// </summary>
+    public const string DismissableLoadVehicleName = "1998 Ranger (dismiss me)";
+
     private static readonly (string ExternalId, string Component, string Body)[] Complaints =
     [
         ("11257832", Component,
@@ -152,7 +159,12 @@ public static class UxFixtureSeeder
         failed.Start(queuedAt.AddHours(1).AddSeconds(1));
         failed.Fail(FailedLoadMessage, queuedAt.AddHours(1).AddSeconds(9));
 
-        database.IngestJobs.AddRange(succeeded, failed);
+        var dismissable = IngestJob.Queue(
+            "FORD", "RANGER", null, 1998, DismissableLoadVehicleName, IngestTrigger.Manual, queuedAt.AddHours(2));
+        dismissable.Start(queuedAt.AddHours(2).AddSeconds(1));
+        dismissable.Fail("NHTSA returned 500 for the complaints feed.", queuedAt.AddHours(2).AddSeconds(4));
+
+        database.IngestJobs.AddRange(succeeded, failed, dismissable);
         await database.SaveChangesAsync(cancellationToken);
     }
 

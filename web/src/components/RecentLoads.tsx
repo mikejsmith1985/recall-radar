@@ -39,6 +39,28 @@ export function describeWhen(load: Load): string {
 export function RecentLoads({ client, refreshToken }: RecentLoadsProps) {
   const [loads, setLoads] = useState<Load[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
+  const [dismissing, setDismissing] = useState<number | null>(null);
+  const [dismissProblem, setDismissProblem] = useState<string | null>(null);
+
+  // The row leaves the table before the server answers. It is a log entry somebody has just read,
+  // and making them wait on a round trip to watch it go would be worse than putting it back on the
+  // rare occasion the server refuses.
+  async function dismiss(load: Load) {
+    const remembered = loads;
+    setDismissing(load.id);
+    setDismissProblem(null);
+    setLoads((current) => current.filter((candidate) => candidate.id !== load.id));
+    try {
+      await client.dismissLoad(load.id);
+    } catch (error: unknown) {
+      // Reported above the table rather than in place of it: a dismissal that did not happen is no
+      // reason to hide the history somebody was reading.
+      setLoads(remembered);
+      setDismissProblem(error instanceof Error ? error.message : "The load could not be dismissed.");
+    } finally {
+      setDismissing(null);
+    }
+  }
 
   useEffect(() => {
     let isCurrent = true;
@@ -68,13 +90,20 @@ export function RecentLoads({ client, refreshToken }: RecentLoadsProps) {
   }
 
   return (
-    <table className="recent-loads" data-testid="recent-loads">
+    <>
+      {dismissProblem && (
+        <p className="error-state" data-testid="dismiss-error">
+          {dismissProblem}
+        </p>
+      )}
+      <table className="recent-loads" data-testid="recent-loads">
       <thead>
         <tr>
           <th scope="col">Vehicle</th>
           <th scope="col">Result</th>
           <th scope="col">Started by</th>
           <th scope="col">When</th>
+          <th scope="col"><span className="visually-hidden">Dismiss</span></th>
         </tr>
       </thead>
       <tbody>
@@ -88,9 +117,26 @@ export function RecentLoads({ client, refreshToken }: RecentLoadsProps) {
             </td>
             <td>{load.trigger}</td>
             <td className="when">{describeWhen(load)}</td>
+            <td className="dismiss">
+              {/* Only a finished load: the runner claims jobs by row, so one still going is the
+                  server's to remove, not this table's. */}
+              {load.isFinished && (
+                <button
+                  type="button"
+                  className="link-button"
+                  data-testid={`dismiss-load-${load.id}`}
+                  aria-label={`Dismiss the ${load.state} load of ${load.displayName}`}
+                  disabled={dismissing === load.id}
+                  onClick={() => void dismiss(load)}
+                >
+                  Dismiss
+                </button>
+              )}
+            </td>
           </tr>
         ))}
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </>
   );
 }

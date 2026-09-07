@@ -216,6 +216,8 @@ export interface ApiClient {
   refreshVehicle(vehicleId: number): Promise<Load>;
   getLoad(loadId: number): Promise<Load>;
   listLoads(): Promise<Load[]>;
+  /** Removes a finished load from the history. Rejects for one still queued or running. */
+  dismissLoad(loadId: number): Promise<void>;
   search(params: SearchParams): Promise<SearchResponse>;
   ask(request: AskRequest): Promise<AskResponse>;
   getDocument(documentId: number): Promise<SourceDocument>;
@@ -254,6 +256,13 @@ async function readProblem(response: Response): Promise<ApiError> {
     return new ApiError(response.status, problem.title ?? fallbackTitle, problem.detail ?? "");
   } catch {
     return new ApiError(response.status, fallbackTitle, "");
+  }
+}
+
+/** For a response whose success carries no body. A refusal still has to reach the caller. */
+async function readNothing(response: Response): Promise<void> {
+  if (!response.ok) {
+    throw await readProblem(response);
   }
 }
 
@@ -296,6 +305,10 @@ export function createApiClient(fetchImpl: FetchLike, baseUrl = ""): ApiClient {
       fetchImpl(`${baseUrl}/api/loads/${loadId}`, { headers: jsonHeaders }).then(readJson<Load>),
 
     listLoads: () => fetchImpl(`${baseUrl}/api/loads`, { headers: jsonHeaders }).then(readJson<Load[]>),
+
+    // 204, so there is no body to read: only whether the server refused.
+    dismissLoad: (loadId) =>
+      fetchImpl(`${baseUrl}/api/loads/${loadId}`, { method: "DELETE", headers: jsonHeaders }).then(readNothing),
 
     search: (params) =>
       fetchImpl(`${baseUrl}/api/search?${buildSearchQuery(params)}`, { headers: jsonHeaders }).then(
